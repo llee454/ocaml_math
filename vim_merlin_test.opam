@@ -1,0 +1,14 @@
+opam-version: "2.0"
+maintainer: "Larry Darryl Lee Jr."
+synopsis: "A test"
+depends: [
+  "ocaml" { >= "4.13.0" }
+  "dune" { >= "2.6.0" }
+  "core" 
+  "core_kernel"
+  "ppx_jane"
+  "lwt"
+  "lwt_ppx"
+  "merlin"
+]
+

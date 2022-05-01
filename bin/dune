@@ -1,0 +1,13 @@
+(executable
+ (public_name vim_merlin_test)
+ (name main)
+ (libraries
+    core
+    core_kernel
+    lwt
+    lwt.unix
+    vim_merlin_test
+    gsl)
+  (preprocess (pps
+    ppx_jane))
+)
