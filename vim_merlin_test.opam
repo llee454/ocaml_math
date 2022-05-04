@@ -10,5 +10,6 @@ depends: [
   "lwt"
   "lwt_ppx"
   "merlin"
+  "owl-plplot"
 ]
 

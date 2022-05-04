@@ -7,7 +7,9 @@
     lwt
     lwt.unix
     vim_merlin_test
-    gsl)
+    gsl
+    plplot
+  )
   (preprocess (pps
     ppx_jane))
 )

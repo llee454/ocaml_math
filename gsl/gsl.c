@@ -9,6 +9,7 @@
 #include <caml/alloc.h> // caml_copy
 
 #include <gsl_math.h> // log1p
+#include <gsl_sf_erf.h>
 #include <gsl_fit.h> // gsl_fit_linear
 #include <gsl_integration.h>
 
@@ -16,6 +17,11 @@
 CAMLprim value ocaml_log1p (value x) {
   CAMLparam0 ();
   CAMLreturn (caml_copy_double (gsl_log1p (Double_val (x))));
+}
+
+CAMLprim value ocaml_gsl_sf_erf_Z (value x) {
+  CAMLparam1 (x);
+  CAMLreturn (caml_copy_double (gsl_sf_erf_Z (Double_val (x))));
 }
 
 CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {

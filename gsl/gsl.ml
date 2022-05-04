@@ -10,13 +10,17 @@ module Linear_fit = struct
   let f = ocaml_gsl_fit_linear
 end
 
+module Erf = struct
+  external f : float -> float = "ocaml_gsl_sf_erf_Z"
+end
+
 module Integrate = struct
   type t = {
     out: float;
     err: float;
     neval: int64;
   }
-  external ocaml_integrate : (float -> float) -> float -> float -> t = "ocaml_integrate"
+  external ocaml_integrate : f:(float -> float) -> lower:float -> upper:float -> t = "ocaml_integrate"
 
   let f = ocaml_integrate
 end
