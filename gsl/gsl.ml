@@ -24,3 +24,19 @@ module Integrate = struct
 
   let f = ocaml_integrate
 end
+
+module Nonlinear_fit = struct
+  (*
+    represents the parameter values used by a function to process an
+    argument value
+  *)
+  type t = {
+    ks: float array; (* parameter values *)
+    x:  float;       (* argument value *)
+  }
+
+  (*
+    Accepts a function, f, that has parameters ks and accepts a float and returns a float; and a set of initial parameter values, ks_init; and a set of data values, xs; and returns the set of parameter values that minimize the error between f_ks (x) 
+  *)
+  external f : f:(t -> float) -> ks_init:(float array) -> xs:(float array) -> ys:(float array) -> float array = "ocaml_gsl_fit_nlinear"
+end
