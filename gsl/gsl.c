@@ -9,15 +9,27 @@
 #include <caml/alloc.h> // caml_copy
 
 #include <gsl_math.h> // log1p
+#include <gsl_statistics_double.h>
 #include <gsl_sf_erf.h>
 #include <gsl_fit.h> // gsl_fit_linear
 #include <gsl_integration.h>
 #include <gsl_multifit_nlinear.h>
+#include <gsl_cdf.h>
 
 
-CAMLprim value ocaml_log1p (value x) {
-  CAMLparam1 (x);
-  CAMLreturn (caml_copy_double (gsl_log1p (Double_val (x))));
+CAMLprim value ocaml_gsl_pow_int (value x, value n) {
+  CAMLparam2 (x, n);
+  CAMLreturn (caml_copy_double (gsl_pow_int (Double_val (x), Int_val (n))));
+}
+
+CAMLprim value ocaml_mean (value xs) {
+  CAMLparam1 (xs);
+  size_t n = Wosize_val (xs);
+  double* x = malloc (n * sizeof (double));
+  for (size_t i = 0; i < n; i ++) {
+    x [i] = Double_field (xs, i);
+  }
+  CAMLreturn (caml_copy_double (gsl_stats_mean (x, 1, n)));
 }
 
 CAMLprim value ocaml_gsl_sf_erf_Z (value x) {
@@ -25,9 +37,20 @@ CAMLprim value ocaml_gsl_sf_erf_Z (value x) {
   CAMLreturn (caml_copy_double (gsl_sf_erf_Z (Double_val (x))));
 }
 
+CAMLprim value ocaml_gsl_cdf_gaussian_P (value x, value std) {
+  CAMLparam2 (x, std);
+  CAMLreturn (caml_copy_double (gsl_cdf_gaussian_P (Double_val (x), Double_val (std))));
+}
+
+CAMLprim value ocaml_gsl_cdf_chisq_P (value x, value nu) {
+  CAMLparam2 (x, nu);
+  CAMLreturn (caml_copy_double (gsl_cdf_chisq_P (Double_val (x), Double_val (nu))));
+}
+
 CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {
   CAMLparam2 (xs, ys);
   CAMLlocal1 (result);
+  // BUG: wrong allocation size (Wosize * sizeof double)
   double* x = malloc (Wosize_val (xs));
   for (size_t i = 0; i < Wosize_val (xs); i ++) {
     x [i] = Double_field (xs, i);
