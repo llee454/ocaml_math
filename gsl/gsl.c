@@ -15,7 +15,8 @@
 #include <gsl_integration.h>
 #include <gsl_multifit_nlinear.h>
 #include <gsl_cdf.h>
-
+#include <gsl_sf_gamma.h> // gsl_sf_fact
+#include <gsl_randist.h> // gsl_ran_binomial_pdf
 
 CAMLprim value ocaml_gsl_pow_int (value x, value n) {
   CAMLparam2 (x, n);
@@ -37,6 +38,16 @@ CAMLprim value ocaml_gsl_sf_erf_Z (value x) {
   CAMLreturn (caml_copy_double (gsl_sf_erf_Z (Double_val (x))));
 }
 
+CAMLprim value ocaml_gsl_sf_erf_Q (value x) {
+  CAMLparam1 (x);
+  CAMLreturn (caml_copy_double (gsl_sf_erf_Q (Double_val (x))));
+}
+
+CAMLprim value ocaml_gsl_sf_fact (value x) {
+  CAMLparam1 (x);
+  CAMLreturn (caml_copy_double (gsl_sf_fact ((unsigned int) (Int_val (x)))));
+}
+
 CAMLprim value ocaml_gsl_cdf_gaussian_P (value x, value std) {
   CAMLparam2 (x, std);
   CAMLreturn (caml_copy_double (gsl_cdf_gaussian_P (Double_val (x), Double_val (std))));
@@ -45,6 +56,20 @@ CAMLprim value ocaml_gsl_cdf_gaussian_P (value x, value std) {
 CAMLprim value ocaml_gsl_cdf_chisq_P (value x, value nu) {
   CAMLparam2 (x, nu);
   CAMLreturn (caml_copy_double (gsl_cdf_chisq_P (Double_val (x), Double_val (nu))));
+}
+
+CAMLprim value ocaml_gsl_cdf_gaussian_Pinv (value x, value ndf) {
+  CAMLparam2 (x, ndf);
+  CAMLreturn (caml_copy_double (gsl_cdf_gaussian_Pinv (Double_val (x), Double_val (ndf))));
+}
+
+CAMLprim value ocaml_gsl_ran_binomial_pdf (value k, value p, value n) {
+  CAMLparam3 (k, p, n);
+  CAMLlocal1 (result);
+  CAMLreturn (caml_copy_double (gsl_ran_binomial_pdf (
+    (unsigned int) (Int_val (k)),
+    Double_val (p),
+    (unsigned int) (Int_val (n)))));
 }
 
 CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {
