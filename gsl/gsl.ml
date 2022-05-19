@@ -1,12 +1,12 @@
 open Core
 
-let sum ~f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. (f x))
+let sum ~f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. f x)
 
-let sumi ~f = Array.foldi ~init:0.0 ~f:(fun i sum x -> sum +. (f i x))
+let sumi ~f = Array.foldi ~init:0.0 ~f:(fun i sum x -> sum +. f i x)
 
 let%expect_test "sum_1" =
-  printf "%.1f" (sum ~f:Fn.id [|1.0; 3.5; -2.5; 8.2|]);
-  [%expect {|10.2|}] 
+  printf "%.1f" (sum ~f:Fn.id [| 1.0; 3.5; -2.5; 8.2 |]);
+  [%expect {|10.2|}]
 
 external pow_int : float -> int -> float = "ocaml_gsl_pow_int"
 
@@ -21,7 +21,7 @@ let%expect_test "pow_int_2" =
 external mean : float array -> float = "ocaml_mean"
 
 let%expect_test "mean_1" =
-  printf "%.4f" (mean [|3.1; 2.7; -1.5; 0.5; -3.12|]);
+  printf "%.4f" (mean [| 3.1; 2.7; -1.5; 0.5; -3.12 |]);
   [%expect {|0.3360|}]
 
 external fact : int -> float = "ocaml_gsl_sf_fact"
@@ -80,7 +80,7 @@ let%expect_test "cdf_chi_squared_p_3" =
   printf "%.4f" (cdf_chi_squared_p ~x:0.455 ~ndf:1.0);
   [%expect {|0.5000|}]
 
-let%expect_test "cdf_chi_squared_p_4" = 
+let%expect_test "cdf_chi_squared_p_4" =
   printf "%.4f" (cdf_chi_squared_p ~x:3.94 ~ndf:10.0);
   [%expect {|0.0500|}]
 
@@ -109,6 +109,7 @@ module Linear_fit = struct
     c0: float;
     c1: float;
   }
+
   external ocaml_gsl_fit_linear : float array -> float array -> t = "ocaml_gsl_fit_linear"
 
   let f = ocaml_gsl_fit_linear
@@ -126,38 +127,36 @@ module Integrate = struct
     err: float;
     neval: int64;
   }
+
   external ocaml_integrate : f:(float -> float) -> lower:float -> upper:float -> t = "ocaml_integrate"
 
   let f = ocaml_integrate
 
   let%expect_test "Integrate.f_1" =
     let { out; _ } =
-      f ~lower:(-1.0) ~upper:1.0
-        ~f:Float.(fun x -> (exp ((~-) (square x /. 2.0))) /. (2.0 *. sqrt_pi))
+      f ~lower:(-1.0) ~upper:1.0 ~f:Float.((fun x -> exp ~-(square x /. 2.0) /. (2.0 *. sqrt_pi)))
     in
     printf "%.4f" out;
     [%expect {|0.4827|}]
 
-  external integration_qag : f:(float -> float) -> lower:float -> upper:float -> t = "ocaml_integration_qag"
+  external integration_qag : f:(float -> float) -> lower:float -> upper:float -> t
+    = "ocaml_integration_qag"
 
   let g = integration_qag
 
   let%expect_test "Integrate.g_1" =
     let { out; _ } =
-      g ~lower:(-1.0) ~upper:1.0
-        ~f:Float.(fun x -> (exp ((~-) (square x /. 2.0))) /. (2.0 *. sqrt_pi))
+      g ~lower:(-1.0) ~upper:1.0 ~f:Float.((fun x -> exp ~-(square x /. 2.0) /. (2.0 *. sqrt_pi)))
     in
     printf "%.4f" out;
     [%expect {|0.4827|}]
-    
+
   external integration_qagi : f:(float -> float) -> t = "ocaml_integration_qagi"
 
   let h = integration_qagi
 
   let%expect_test "Integrate.h_1" =
-    let { out; _ } =
-      h ~f:Float.(fun x -> 2.0 ** (~- (square x)))
-    in
+    let { out; _ } = h ~f:Float.((fun x -> 2.0 ** ~-(square x))) in
     printf "%.8f" out;
     [%expect {|2.12893404|}]
 end
@@ -168,8 +167,9 @@ module Nonlinear_fit = struct
     argument value
   *)
   type t = {
-    ks: float array; (* parameter values *)
-    x:  float;       (* argument value *)
+    ks: float array;
+    (* parameter values *)
+    x: float; (* argument value *)
   }
 
   (*
@@ -178,11 +178,11 @@ module Nonlinear_fit = struct
     ks_init; and a set of data values, xs; and returns the set of
     parameter values that minimize the error between f_ks (x)
   *)
-  external f : f:(t -> float) -> ks_init:(float array) -> xs:(float array) -> ys:(float array) -> float array = "ocaml_gsl_fit_nlinear"
+  external f : f:(t -> float) -> ks_init:float array -> xs:float array -> ys:float array -> float array
+    = "ocaml_gsl_fit_nlinear"
 end
 
 module Stats_tests = struct
-
   exception N_too_small
 
   (*
@@ -207,10 +207,10 @@ module Stats_tests = struct
     in
     let u = mean xs in
     (* compute the biased sample deviation *)
-    let s = sqrt ((sum ~f:(fun x -> Float.square (x -. u)) xs) /. n) in
-    let skew = (sum ~f:(fun x -> (pow_int ((x -. u) /. s) 3)) xs) /. n in
-    let kurt = ((sum ~f:(fun x -> (pow_int ((x -. u) /. s) 4)) xs) /. n) -. 3.0 in
-    n /. 6.0 *. (Float.square (skew) +. Float.square (kurt) /. 4.0)
+    let s = sqrt (sum ~f:(fun x -> Float.square (x -. u)) xs /. n) in
+    let skew = sum ~f:(fun x -> pow_int ((x -. u) /. s) 3) xs /. n in
+    let kurt = (sum ~f:(fun x -> pow_int ((x -. u) /. s) 4) xs /. n) -. 3.0 in
+    n /. 6.0 *. (Float.square skew +. (Float.square kurt /. 4.0))
 
   (**
     Computes an approximation of the r-th largest value in a random
@@ -227,12 +227,12 @@ module Stats_tests = struct
   *)
   let order_stat_approx ~r ~n ~mean ~std : float =
     let alpha = 0.375 in
-    mean +. (cdf_gaussian_pinv ~x:((float r -. alpha) /. (float n -. (2.0 *. alpha) +. 1.0)) ~sigma:1.0) *. std
+    mean
+    +. (cdf_gaussian_pinv ~x:((float r -. alpha) /. (float n -. (2.0 *. alpha) +. 1.0)) ~sigma:1.0 *. std)
 
   let%expect_test "order_stat_1" =
     printf "%.1f" @@ order_stat_approx ~r:20 ~n:20 ~mean:0.0 ~std:1.0;
     [%expect {|1.9|}]
-
 
   (**
     Computes an approximation of mean value of the r-th largest
@@ -257,14 +257,12 @@ module Stats_tests = struct
     3. [Exptected Values of Normal Order Statistics](http://faculty.washington.edu/heagerty/Books/Biostatistics/TABLES/NormalOrder.pdf)
   *)
   let order_stat ~r ~n : float =
-    let lower, upper = -6.0, 6.0 in (* NOTE: the tests fail when these bounds are expanded. *)
-    let Integrate.{ out; _ } = 
-      Integrate.g ~lower ~upper 
-        ~f:(fun x ->
-          let p = 1.0 -. Erf.q (x) in
-          (float r *. x /. p)
-          *. (pdf_binomial ~k:r ~p ~n)
-          *. (Erf.f x))
+    let lower, upper = -6.0, 6.0 in
+    (* NOTE: the tests fail when these bounds are expanded. *)
+    let Integrate.{ out; _ } =
+      Integrate.g ~lower ~upper ~f:(fun x ->
+          let p = 1.0 -. Erf.q x in
+          float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x)
     in
     out
 
@@ -292,22 +290,55 @@ module Stats_tests = struct
     let m = mean xs in
     Array.sort ~len:n xs ~compare:[%compare: float];
     let os = Array.init n ~f:(fun r -> order_stat ~r ~n) in
-    (sumi xs ~f:(fun r y -> (y -. m) *. (Array.get os r))) /.
-    (Float.sqrt (
-      (sumi xs ~f:(fun _ y -> Float.square (y -. m))) *.
-      (sumi xs ~f:(fun r _ -> Float.square (Array.get os r)))))
+    sumi xs ~f:(fun r y -> (y -. m) *. os.(r))
+    /. Float.sqrt
+         (sumi xs ~f:(fun _ y -> Float.square (y -. m)) *. sumi xs ~f:(fun r _ -> Float.square os.(r)))
 
   let%expect_test "shapiro_francia_stat_1" =
-    printf "%.4f" (shapiro_francia_stat [|
-      0.664220;-0.631950;-0.448290;0.184850;-1.40500;
-      0.896160;-0.598050;-0.425810;0.504560;0.732380;
-      1.91910;-0.0628270;0.451500;-0.581380;-1.07650;
-      -0.245060;0.204370;-0.646910;-0.007770;-1.47800;
-      -0.573960;0.448420;-1.25420;0.220640;-1.18590;
-      -1.14360;-0.890480;-0.90406;1.24900;-0.875340;
-      -0.0253890;-0.0810450;1.87970;0.930510;0.865260;
-      -0.618640;0.110770;-2.00530;0.328060;0.593620
-    |]);
+    printf "%.4f"
+      (shapiro_francia_stat
+         [|
+           0.664220;
+           -0.631950;
+           -0.448290;
+           0.184850;
+           -1.40500;
+           0.896160;
+           -0.598050;
+           -0.425810;
+           0.504560;
+           0.732380;
+           1.91910;
+           -0.0628270;
+           0.451500;
+           -0.581380;
+           -1.07650;
+           -0.245060;
+           0.204370;
+           -0.646910;
+           -0.007770;
+           -1.47800;
+           -0.573960;
+           0.448420;
+           -1.25420;
+           0.220640;
+           -1.18590;
+           -1.14360;
+           -0.890480;
+           -0.90406;
+           1.24900;
+           -0.875340;
+           -0.0253890;
+           -0.0810450;
+           1.87970;
+           0.930510;
+           0.865260;
+           -0.618640;
+           0.110770;
+           -2.00530;
+           0.328060;
+           0.593620;
+         |]);
     [%expect {||}]
 
   (*
@@ -334,26 +365,58 @@ module Stats_tests = struct
 
   let shapiro_francia_test (xs : float array) : float =
     let n = float (Array.length xs) in
-    let mean = Float.log (Float.log n) -. (Float.log n) in
-    let std  = Float.log (Float.log n) +. (2.0 /. (Float.log n)) in
+    let mean = Float.log (Float.log n) -. Float.log n in
+    let std = Float.log (Float.log n) +. (2.0 /. Float.log n) in
     let w = Float.log (1.0 -. shapiro_francia_stat xs) in
     let p = cdf_gaussian_p ~x:(w -. mean) ~std in
     let q = 1.0 -. p in
-    if Float.(p >= 0.5)
-    then p -. q
-    else q -. p
+    if Float.(p >= 0.5) then p -. q else q -. p
 
   let%expect_test "shapiro_francia_test" =
-    printf "%.4f" (shapiro_francia_test [|
-      0.664220;-0.631950;-0.448290;0.184850;-1.40500;
-      0.896160;-0.598050;-0.425810;0.504560;0.732380;
-      1.91910;-0.0628270;0.451500;-0.581380;-1.07650;
-      -0.245060;0.204370;-0.646910;-0.007770;-1.47800;
-      -0.573960;0.448420;-1.25420;0.220640;-1.18590;
-      -1.14360;-0.890480;-0.90406;1.24900;-0.875340;
-      -0.0253890;-0.0810450;1.87970;0.930510;0.865260;
-      -0.618640;0.110770;-2.00530;0.328060;0.593620
-    |]);
+    printf "%.4f"
+      (shapiro_francia_test
+         [|
+           0.664220;
+           -0.631950;
+           -0.448290;
+           0.184850;
+           -1.40500;
+           0.896160;
+           -0.598050;
+           -0.425810;
+           0.504560;
+           0.732380;
+           1.91910;
+           -0.0628270;
+           0.451500;
+           -0.581380;
+           -1.07650;
+           -0.245060;
+           0.204370;
+           -0.646910;
+           -0.007770;
+           -1.47800;
+           -0.573960;
+           0.448420;
+           -1.25420;
+           0.220640;
+           -1.18590;
+           -1.14360;
+           -0.890480;
+           -0.90406;
+           1.24900;
+           -0.875340;
+           -0.0253890;
+           -0.0810450;
+           1.87970;
+           0.930510;
+           0.865260;
+           -0.618640;
+           0.110770;
+           -2.00530;
+           0.328060;
+           0.593620;
+         |]);
     [%expect {||}]
 
   let%expect_test "shapiro_francia_test_2" =
@@ -361,5 +424,4 @@ module Stats_tests = struct
     let xs = Array.init 30 ~f:(fun _ -> Random.float 3.0) in
     printf "%.4f" (shapiro_francia_test xs);
     [%expect {||}]
-
 end
