@@ -53,6 +53,11 @@ CAMLprim value ocaml_gsl_cdf_gaussian_P (value x, value std) {
   CAMLreturn (caml_copy_double (gsl_cdf_gaussian_P (Double_val (x), Double_val (std))));
 }
 
+CAMLprim value ocaml_gsl_cdf_gaussian_Q (value x, value std) {
+  CAMLparam2 (x, std);
+  CAMLreturn (caml_copy_double (gsl_cdf_gaussian_Q (Double_val (x), Double_val (std))));
+}
+
 CAMLprim value ocaml_gsl_cdf_chisq_P (value x, value nu) {
   CAMLparam2 (x, nu);
   CAMLreturn (caml_copy_double (gsl_cdf_chisq_P (Double_val (x), Double_val (nu))));
@@ -126,13 +131,59 @@ CAMLprim value ocaml_integrate (value f, value lower, value upper) {
   };
   gsl_function F = {
     .function = &callback,
-    .params = &params
+    .params   = &params
   };
-  int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), 0.1, 0.1, &out, &err, &neval);
+  int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), 0.0001, 0, &out, &err, &neval);
   result = caml_alloc (3, 0);
   Store_field (result, 0, caml_copy_double (out));
   Store_field (result, 1, caml_copy_double (err));
   Store_field (result, 2, Val_long (neval));
+  CAMLreturn (result);
+}
+
+CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
+  CAMLparam3 (f, lower, upper);
+  CAMLlocal1 (result);
+  double out;
+  double err;
+  size_t limit = 10;
+  struct callback_params params = {
+    .h = f
+  };
+  gsl_function F = {
+    .function = &callback,
+    .params   = &params
+  };
+  gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
+  int status =  gsl_integration_qag (&F, Double_val (lower), Double_val (upper), 0.0001, 0, limit, GSL_INTEG_GAUSS61, w, &out, &err);
+  gsl_integration_workspace_free (w);
+  result = caml_alloc (3, 0);
+  Store_field (result, 0, caml_copy_double (out));
+  Store_field (result, 1, caml_copy_double (err));
+  Store_field (result, 2, Val_long (0));
+  CAMLreturn (result);
+}
+
+CAMLprim value ocaml_integration_qagi (value f) {
+  CAMLparam1 (f);
+  CAMLlocal1 (result);
+  double out;
+  double err;
+  size_t limit = 10;
+  struct callback_params params = {
+    .h = f
+  };
+  gsl_function F = {
+    .function = &callback,
+    .params   = &params
+  };
+  gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
+  int status =  gsl_integration_qagi (&F, 0.0001, 0, limit, w, &out, &err);
+  result = caml_alloc (3, 0);
+  Store_field (result, 0, caml_copy_double (out));
+  Store_field (result, 1, caml_copy_double (err));
+  Store_field (result, 2, Val_long (0));
+  gsl_integration_workspace_free (w);
   CAMLreturn (result);
 }
 

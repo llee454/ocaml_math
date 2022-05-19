@@ -52,6 +52,20 @@ let%expect_test "cdf_gaussian_p_3" =
   printf "%.4f" (cdf_gaussian_p ~x:2.14 ~std:3.14);
   [%expect {|0.7522|}]
 
+external cdf_gaussian_q : x:float -> std:float -> float = "ocaml_gsl_cdf_gaussian_Q"
+
+let%expect_test "cdf_gaussian_q_1" =
+  printf "%.4f" (1.0 -. cdf_gaussian_q ~x:0.5 ~std:1.0);
+  [%expect {|0.6915|}]
+
+let%expect_test "cdf_gaussian_q_2" =
+  printf "%.4f" (1.0 -. cdf_gaussian_q ~x:0.89 ~std:1.0);
+  [%expect {|0.8133|}]
+
+let%expect_test "cdf_gaussian_q_3" =
+  printf "%.4f" (1.0 -. cdf_gaussian_q ~x:2.14 ~std:3.14);
+  [%expect {|0.7522|}]
+
 external cdf_chi_squared_p : x:float -> ndf:float -> float = "ocaml_gsl_cdf_chisq_P"
 
 let%expect_test "cdf_chi_squared_p_1" =
@@ -123,6 +137,29 @@ module Integrate = struct
     in
     printf "%.4f" out;
     [%expect {|0.4827|}]
+
+  external integration_qag : f:(float -> float) -> lower:float -> upper:float -> t = "ocaml_integration_qag"
+
+  let g = integration_qag
+
+  let%expect_test "Integrate.g_1" =
+    let { out; _ } =
+      g ~lower:(-1.0) ~upper:1.0
+        ~f:Float.(fun x -> (exp ((~-) (square x /. 2.0))) /. (2.0 *. sqrt_pi))
+    in
+    printf "%.4f" out;
+    [%expect {|0.4827|}]
+    
+  external integration_qagi : f:(float -> float) -> t = "ocaml_integration_qagi"
+
+  let h = integration_qagi
+
+  let%expect_test "Integrate.h_1" =
+    let { out; _ } =
+      h ~f:Float.(fun x -> 2.0 ** (~- (square x)))
+    in
+    printf "%.8f" out;
+    [%expect {|2.12893404|}]
 end
 
 module Nonlinear_fit = struct
@@ -216,11 +253,13 @@ module Stats_tests = struct
        Size Twenty and Less from the Normal Distribution".
        Numerical Analysis Research, University of California,
        Los Angeles. 
+       https://projecteuclid.org/journalArticle/Download?urlId=10.1214%2Faoms%2F1177728266
+    3. [Exptected Values of Normal Order Statistics](http://faculty.washington.edu/heagerty/Books/Biostatistics/TABLES/NormalOrder.pdf)
   *)
   let order_stat ~r ~n : float =
-    let lower, upper = -4.0, 4.0 in (* NOTE: the tests fail when these bounds are expanded. *)
+    let lower, upper = -6.0, 6.0 in (* NOTE: the tests fail when these bounds are expanded. *)
     let Integrate.{ out; _ } = 
-      Integrate.f ~lower ~upper
+      Integrate.g ~lower ~upper 
         ~f:(fun x ->
           let p = 1.0 -. Erf.q (x) in
           (float r *. x /. p)
@@ -237,8 +276,8 @@ module Stats_tests = struct
     printf "%.4f" (order_stat ~r:2 ~n:4);
     [%expect {|-0.2970|}]
 
-  let%expect_test "order_stat_2" =
-    let n = 30 in
+  let%expect_test "order_stat_3" =
+    let n = 80 in
     let os = Array.init n ~f:(fun r -> order_stat ~r ~n) in
     printf !"%{Sexp}" ([%sexp_of: float array] os);
     [%expect {||}]
@@ -265,7 +304,62 @@ module Stats_tests = struct
       1.91910;-0.0628270;0.451500;-0.581380;-1.07650;
       -0.245060;0.204370;-0.646910;-0.007770;-1.47800;
       -0.573960;0.448420;-1.25420;0.220640;-1.18590;
-      -1.14360;-0.890480;-0.90406;1.24900;-0.875340
+      -1.14360;-0.890480;-0.90406;1.24900;-0.875340;
+      -0.0253890;-0.0810450;1.87970;0.930510;0.865260;
+      -0.618640;0.110770;-2.00530;0.328060;0.593620
     |]);
     [%expect {||}]
+
+  (*
+    Returns the normalized Shapiro Francia Statistics.
+
+    Note: According to P. Royston "A Toolkit for Testing
+    for Non-Normality in Complete and Censored Samples", this
+    value is normally distributed with mean:
+
+      mean: ln(ln(n)) - ln(n)
+      std: ln(ln(n)) + 2/ln(n)
+    
+    where n denotes the sample size.
+
+    This transformation was originally reported by Roysten (1992a)
+    for n values from 5 to 5000.
+
+    Warning: this transformation is only valid for n values ranging
+    from 5 to 5000.
+
+    References:
+    1. ["A Toolkit for Testing for Non-Normality in Complete and Censored Samples"]( https://www.jstor.org/stable/2348109)
+  *)
+
+  let shapiro_francia_test (xs : float array) : float =
+    let n = float (Array.length xs) in
+    let mean = Float.log (Float.log n) -. (Float.log n) in
+    let std  = Float.log (Float.log n) +. (2.0 /. (Float.log n)) in
+    let w = Float.log (1.0 -. shapiro_francia_stat xs) in
+    let p = cdf_gaussian_p ~x:(w -. mean) ~std in
+    let q = 1.0 -. p in
+    if Float.(p >= 0.5)
+    then p -. q
+    else q -. p
+
+  let%expect_test "shapiro_francia_test" =
+    printf "%.4f" (shapiro_francia_test [|
+      0.664220;-0.631950;-0.448290;0.184850;-1.40500;
+      0.896160;-0.598050;-0.425810;0.504560;0.732380;
+      1.91910;-0.0628270;0.451500;-0.581380;-1.07650;
+      -0.245060;0.204370;-0.646910;-0.007770;-1.47800;
+      -0.573960;0.448420;-1.25420;0.220640;-1.18590;
+      -1.14360;-0.890480;-0.90406;1.24900;-0.875340;
+      -0.0253890;-0.0810450;1.87970;0.930510;0.865260;
+      -0.618640;0.110770;-2.00530;0.328060;0.593620
+    |]);
+    [%expect {||}]
+
+  let%expect_test "shapiro_francia_test_2" =
+    let () = Random.init 5 in
+    let xs = Array.init 30 ~f:(fun _ -> Random.float 3.0) in
+    printf "%.4f" (shapiro_francia_test xs);
+    [%expect {||}]
+
 end
