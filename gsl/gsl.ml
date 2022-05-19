@@ -2,6 +2,8 @@ open Core
 
 let sum ~f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. (f x))
 
+let sumi ~f = Array.foldi ~init:0.0 ~f:(fun i sum x -> sum +. (f i x))
+
 let%expect_test "sum_1" =
   printf "%.1f" (sum ~f:Fn.id [|1.0; 3.5; -2.5; 8.2|]);
   [%expect {|10.2|}] 
@@ -209,9 +211,14 @@ module Stats_tests = struct
 
     References:
     1. [Algorithm AS 177: Expected Normal Order Statistics (Exact and Approximate)](https://www.jstor.org/stable/2347982 )
+    2. D. Teichroew, et. al. "Tables of Expected Values of Order
+       Statistics and Products of Order Statistics for Samples of
+       Size Twenty and Less from the Normal Distribution".
+       Numerical Analysis Research, University of California,
+       Los Angeles. 
   *)
   let order_stat ~r ~n : float =
-    let lower, upper = -5.0, 5.0 in
+    let lower, upper = -4.0, 4.0 in (* NOTE: the tests fail when these bounds are expanded. *)
     let Integrate.{ out; _ } = 
       Integrate.f ~lower ~upper
         ~f:(fun x ->
@@ -225,4 +232,40 @@ module Stats_tests = struct
   let%expect_test "order_stat_1" =
     printf "%.4f" (order_stat ~r:8 ~n:10);
     [%expect {|0.6561|}]
+
+  let%expect_test "order_stat_2" =
+    printf "%.4f" (order_stat ~r:2 ~n:4);
+    [%expect {|-0.2970|}]
+
+  let%expect_test "order_stat_2" =
+    let n = 30 in
+    let os = Array.init n ~f:(fun r -> order_stat ~r ~n) in
+    printf !"%{Sexp}" ([%sexp_of: float array] os);
+    [%expect {||}]
+
+  (*
+    Computes the Shapiro Francia statistic which parameterizes
+    the likelihood that the given sample is drawn from a Gaussian
+    distribution with mean 0 and standard deviation 1.
+  *)
+  let shapiro_francia_stat (xs : float array) : float =
+    let n = Array.length xs in
+    let m = mean xs in
+    Array.sort ~len:n xs ~compare:[%compare: float];
+    let os = Array.init n ~f:(fun r -> order_stat ~r ~n) in
+    (sumi xs ~f:(fun r y -> (y -. m) *. (Array.get os r))) /.
+    (Float.sqrt (
+      (sumi xs ~f:(fun _ y -> Float.square (y -. m))) *.
+      (sumi xs ~f:(fun r _ -> Float.square (Array.get os r)))))
+
+  let%expect_test "shapiro_francia_stat_1" =
+    printf "%.4f" (shapiro_francia_stat [|
+      0.664220;-0.631950;-0.448290;0.184850;-1.40500;
+      0.896160;-0.598050;-0.425810;0.504560;0.732380;
+      1.91910;-0.0628270;0.451500;-0.581380;-1.07650;
+      -0.245060;0.204370;-0.646910;-0.007770;-1.47800;
+      -0.573960;0.448420;-1.25420;0.220640;-1.18590;
+      -1.14360;-0.890480;-0.90406;1.24900;-0.875340
+    |]);
+    [%expect {||}]
 end
