@@ -9,6 +9,7 @@
 #include <caml/memory.h> // CAMLreturn
 #include <caml/alloc.h> // caml_copy
 
+#include <gsl_errno.h>
 #include <gsl_math.h> // log1p
 #include <gsl_statistics_double.h>
 #include <gsl_sf_erf.h>
@@ -325,38 +326,113 @@ CAMLprim value ocaml_gsl_fit_nlinear (
   CAMLreturn (ocaml_f_ks_final);
 }
 
-double energy (void* xp) {
-  double* x = (double*) xp;
-  double result = gsl_pow_int (*x + 1, 2);
-//   printf ("[energy] x: %f result: %f\n ", *x, result);
+struct ocaml_siman_callbacks {
+  value copy_fn;
+  value energy_fn;
+  value step_fn;
+  value distance_fn;
+};
+
+struct ocaml_siman_state {
+  struct ocaml_siman_callbacks* callbacks;
+  value state;
+};
+
+double ocaml_siman_energy (void* xp) {
+  CAMLparam0 ();
+  printf ("[ocaml_siman_energy]\n");
+  struct ocaml_siman_state* s = (struct ocaml_siman_state*) xp;
+  double result = Double_val (caml_callback (s->callbacks->energy_fn, s->state));
+  printf ("[energy] x: %0.4f energy: %0.4f\n", Double_val (Field (s->state, 0)), result);
+  fflush (stdout);
   return result;
 }
 
-void step (const gsl_rng* rng, void* xp, double step_size) {
-  double* x = (double*) xp;
-  double result = ((2 * gsl_rng_uniform (rng) - 1) * step_size) + *x;
-//   printf ("[step] x: %f step size: %f result: %f\n", *x, step_size, result);
-  memcpy (xp, &result, sizeof(result));
+void ocaml_siman_step (const gsl_rng* rng, void* xp, double step_size) {
+  CAMLparam0 ();
+  printf ("[ocaml_siman_step]\n");
+  struct ocaml_siman_state* s = (struct ocaml_siman_state*) xp;
+  double step   = (2 * gsl_rng_uniform (rng) - 1) * step_size;
+  double orig_state = Double_val (Field (s->state, 0));
+  caml_callback2 (s->callbacks->step_fn, s->state, caml_copy_double (step));
+  printf (
+    "[ocaml_siman_step] step: %0.4f orig: %0.4f next: %0.4f\n",
+    step, orig_state, Double_val (Field (s->state, 0)));
+  fflush (stdout);
 }
 
-double distance (void* xp, void* yp) {
-  double* x = (double*) xp;
-  double* y = (double*) yp;
-  double result = fabs (*x - *y);
-//   printf ("[distance] x: %f y: %f result: %f\n", *x, *y, result);
-  return result;
+double ocaml_siman_distance (void* xp, void* yp) {
+  CAMLparam0 ();
+  printf ("[ocaml_siman_distance]\n");
+  struct ocaml_siman_state* x = (struct ocaml_siman_state*) xp;
+  struct ocaml_siman_state* y = (struct ocaml_siman_state*) yp;
+  if (x->callbacks != y->callbacks) {
+    GSL_ERROR("Internal Error in ocaml_siman", GSL_EINVAL);
+  }
+  double distance = Double_val (caml_callback2 (x->callbacks->distance_fn, x->state, y->state));
+  printf ("[distance] result: %f\n", distance);
+  fflush (stdout);
+  return distance;
+}
+
+void ocaml_siman_copy (void* source, void* dest) {
+  CAMLparam0 ();
+  CAMLlocal1 (state);
+  printf ("[ocaml_siman_copy]\n");
+  fflush (stdout);
+  struct ocaml_siman_state* s = (struct ocaml_siman_state*) source;
+  struct ocaml_siman_state* d = (struct ocaml_siman_state*) dest;
+  state = caml_callback (s->callbacks->copy_fn, s->state);
+  d->callbacks   = (*s).callbacks;
+  d->state       = state;
+  printf ("[ocaml_siman_copy] done\n");
+  fflush (stdout);
+}
+
+void* ocaml_siman_construct (void* xp) {
+  CAMLparam0 ();
+  printf ("[ocaml_siman_construct]\n");
+  fflush (stdout);
+  struct ocaml_siman_state* dest = malloc (sizeof (struct ocaml_siman_state));
+  ocaml_siman_copy (xp, dest);
+  printf ("[ocaml_siman_construct] done\n");
+  fflush (stdout);
+  return dest;
+}
+
+void ocaml_siman_destroy (void* xp) {
+  printf ("[ocaml_siman_destroy]\n");
+  fflush (stdout);
+  free (xp);
+  printf ("[ocaml_siman_destroy] done\n");
+  fflush (stdout);
 }
 
 void print_cfg (void* xp) {
-  double x = *((double*) xp);
-  printf ("x: %0.4f", x);
+  struct ocaml_siman_state* s = (struct ocaml_siman_state*) xp;
+  printf (" print cfg x: %0.4f", Double_val (Field (s->state, 0)));
+  fflush (stdout);
 } 
 
-CAMLprim value ocaml_siman_solve (value initial) {
-  CAMLparam1 (initial);
+CAMLprim value ocaml_siman_solve (value copy_fn, value energy_fn, value step_fn, value distance_fn, value initial) {
+  CAMLparam5 (copy_fn, energy_fn, step_fn, distance_fn, initial);
+
+  printf ("[ocaml_siman_solve] initial: %0.4f\n", Double_val (Field (initial, 0)));
+  fflush (stdout);
 
   // create the initial configuration state.
-  double xp0 = Double_val (initial);
+  struct ocaml_siman_callbacks callbacks = {
+    .copy_fn     = copy_fn,
+    .energy_fn   = energy_fn,
+    .step_fn     = step_fn,
+    .distance_fn = distance_fn
+  };
+  struct ocaml_siman_state xp0 = {
+    .callbacks = &callbacks,
+    .state     = initial
+  };
+
+  // printf ("[ocaml_siman_solve] callback s: %lu\n", (unsigned long) xp0.callbacks);
 
   // initialize a random number generator.
   gsl_rng_env_setup ();
@@ -364,8 +440,8 @@ CAMLprim value ocaml_siman_solve (value initial) {
 
   // paramters:
   gsl_siman_params_t params = {
-    .n_tries = 200,
-    .iters_fixed_T = 1000,
+    .n_tries = 2, // 200
+    .iters_fixed_T = 8, // 1000
     .step_size = 1,
     .k = 1.0, // Boltzman constant
     .t_initial = 0.008, // initial temperature
@@ -376,17 +452,19 @@ CAMLprim value ocaml_siman_solve (value initial) {
   gsl_siman_solve (
     rng,
     &xp0,
-    energy,
-    step,
-    distance,
+    ocaml_siman_energy,
+    ocaml_siman_step,
+    ocaml_siman_distance,
     print_cfg, // print_position
-    NULL, // copy func
-    NULL, // copy cons
-    NULL, // destructor
-    sizeof (double), // element size
+    ocaml_siman_copy, // copy func
+    ocaml_siman_construct, // copy cons
+    ocaml_siman_destroy, // destructor
+    0, // element size
     params
   );
 
   gsl_rng_free (rng);
-  CAMLreturn (caml_copy_double (xp0));
+  printf ("[ocaml_siman_solve] result: %f\n", Double_val (Field (xp0.state, 0)));
+  fflush (stdout);
+  CAMLreturn (xp0.state);
 }
