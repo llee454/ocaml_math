@@ -23,3 +23,10 @@ opam install --deps-only .
 dune build
 dune exec bin/main.exe
 ```
+
+Running Unit Tests
+------------------
+
+```
+dune runtest
+```
