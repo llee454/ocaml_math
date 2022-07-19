@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h> // for memcpy
 
 // Prevent OCaml from exporting short macro names.
 #define CAML_NAME_SPACE 1
@@ -15,7 +16,11 @@
 #include <gsl_integration.h>
 #include <gsl_multifit_nlinear.h>
 #include <gsl_cdf.h>
+#include <gsl_sf_gamma.h> // gsl_sf_fact
+#include <gsl_randist.h> // gsl_ran_binomial_pdf
 
+#include <gsl_siman.h> // simulated annealing
+#include <gsl_rng.h> // random number generator
 
 CAMLprim value ocaml_gsl_pow_int (value x, value n) {
   CAMLparam2 (x, n);
@@ -37,14 +42,43 @@ CAMLprim value ocaml_gsl_sf_erf_Z (value x) {
   CAMLreturn (caml_copy_double (gsl_sf_erf_Z (Double_val (x))));
 }
 
+CAMLprim value ocaml_gsl_sf_erf_Q (value x) {
+  CAMLparam1 (x);
+  CAMLreturn (caml_copy_double (gsl_sf_erf_Q (Double_val (x))));
+}
+
+CAMLprim value ocaml_gsl_sf_fact (value x) {
+  CAMLparam1 (x);
+  CAMLreturn (caml_copy_double (gsl_sf_fact ((unsigned int) (Int_val (x)))));
+}
+
 CAMLprim value ocaml_gsl_cdf_gaussian_P (value x, value std) {
   CAMLparam2 (x, std);
   CAMLreturn (caml_copy_double (gsl_cdf_gaussian_P (Double_val (x), Double_val (std))));
 }
 
+CAMLprim value ocaml_gsl_cdf_gaussian_Q (value x, value std) {
+  CAMLparam2 (x, std);
+  CAMLreturn (caml_copy_double (gsl_cdf_gaussian_Q (Double_val (x), Double_val (std))));
+}
+
 CAMLprim value ocaml_gsl_cdf_chisq_P (value x, value nu) {
   CAMLparam2 (x, nu);
   CAMLreturn (caml_copy_double (gsl_cdf_chisq_P (Double_val (x), Double_val (nu))));
+}
+
+CAMLprim value ocaml_gsl_cdf_gaussian_Pinv (value x, value ndf) {
+  CAMLparam2 (x, ndf);
+  CAMLreturn (caml_copy_double (gsl_cdf_gaussian_Pinv (Double_val (x), Double_val (ndf))));
+}
+
+CAMLprim value ocaml_gsl_ran_binomial_pdf (value k, value p, value n) {
+  CAMLparam3 (k, p, n);
+  CAMLlocal1 (result);
+  CAMLreturn (caml_copy_double (gsl_ran_binomial_pdf (
+    (unsigned int) (Int_val (k)),
+    Double_val (p),
+    (unsigned int) (Int_val (n)))));
 }
 
 CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {
@@ -101,13 +135,59 @@ CAMLprim value ocaml_integrate (value f, value lower, value upper) {
   };
   gsl_function F = {
     .function = &callback,
-    .params = &params
+    .params   = &params
   };
-  int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), 0.1, 0.1, &out, &err, &neval);
+  int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), 0.0001, 0, &out, &err, &neval);
   result = caml_alloc (3, 0);
   Store_field (result, 0, caml_copy_double (out));
   Store_field (result, 1, caml_copy_double (err));
   Store_field (result, 2, Val_long (neval));
+  CAMLreturn (result);
+}
+
+CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
+  CAMLparam3 (f, lower, upper);
+  CAMLlocal1 (result);
+  double out;
+  double err;
+  size_t limit = 10;
+  struct callback_params params = {
+    .h = f
+  };
+  gsl_function F = {
+    .function = &callback,
+    .params   = &params
+  };
+  gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
+  int status =  gsl_integration_qag (&F, Double_val (lower), Double_val (upper), 0.0001, 0, limit, GSL_INTEG_GAUSS61, w, &out, &err);
+  gsl_integration_workspace_free (w);
+  result = caml_alloc (3, 0);
+  Store_field (result, 0, caml_copy_double (out));
+  Store_field (result, 1, caml_copy_double (err));
+  Store_field (result, 2, Val_long (0));
+  CAMLreturn (result);
+}
+
+CAMLprim value ocaml_integration_qagi (value f) {
+  CAMLparam1 (f);
+  CAMLlocal1 (result);
+  double out;
+  double err;
+  size_t limit = 10;
+  struct callback_params params = {
+    .h = f
+  };
+  gsl_function F = {
+    .function = &callback,
+    .params   = &params
+  };
+  gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
+  int status =  gsl_integration_qagi (&F, 0.0001, 0, limit, w, &out, &err);
+  result = caml_alloc (3, 0);
+  Store_field (result, 0, caml_copy_double (out));
+  Store_field (result, 1, caml_copy_double (err));
+  Store_field (result, 2, Val_long (0));
+  gsl_integration_workspace_free (w);
   CAMLreturn (result);
 }
 
@@ -223,7 +303,7 @@ CAMLprim value ocaml_gsl_fit_nlinear (
   gsl_multifit_nlinear_init (ks_init, &fdf, w);
 
   int status = gsl_multifit_nlinear_driver (max_iter,
-    x_tol, g_tol, f_tol,
+    x_tol, g_tol, f_tol, 
     NULL, // no callback function
     NULL, // no callback function params
     &info, w
@@ -235,7 +315,7 @@ CAMLprim value ocaml_gsl_fit_nlinear (
     Store_double_field (ocaml_f_ks_final, i,
       gsl_vector_get (w->x, i));
   }
-
+ 
   // clean up allocated memory resources.
   gsl_multifit_nlinear_free (w);
   gsl_vector_free (ks_init);
@@ -243,4 +323,70 @@ CAMLprim value ocaml_gsl_fit_nlinear (
   free (ys);
 
   CAMLreturn (ocaml_f_ks_final);
+}
+
+double energy (void* xp) {
+  double* x = (double*) xp;
+  double result = gsl_pow_int (*x + 1, 2);
+//   printf ("[energy] x: %f result: %f\n ", *x, result);
+  return result;
+}
+
+void step (const gsl_rng* rng, void* xp, double step_size) {
+  double* x = (double*) xp;
+  double result = ((2 * gsl_rng_uniform (rng) - 1) * step_size) + *x;
+//   printf ("[step] x: %f step size: %f result: %f\n", *x, step_size, result);
+  memcpy (xp, &result, sizeof(result));
+}
+
+double distance (void* xp, void* yp) {
+  double* x = (double*) xp;
+  double* y = (double*) yp;
+  double result = fabs (*x - *y);
+//   printf ("[distance] x: %f y: %f result: %f\n", *x, *y, result);
+  return result;
+}
+
+void print_cfg (void* xp) {
+  double x = *((double*) xp);
+  printf ("x: %0.4f", x);
+} 
+
+CAMLprim value ocaml_siman_solve (value initial) {
+  CAMLparam1 (initial);
+
+  // create the initial configuration state.
+  double xp0 = Double_val (initial);
+
+  // initialize a random number generator.
+  gsl_rng_env_setup ();
+  gsl_rng* rng = gsl_rng_alloc (gsl_rng_default);
+
+  // paramters:
+  gsl_siman_params_t params = {
+    .n_tries = 200,
+    .iters_fixed_T = 1000,
+    .step_size = 1,
+    .k = 1.0, // Boltzman constant
+    .t_initial = 0.008, // initial temperature
+    .mu_t = 1.003,
+    .t_min = 2.0e-6 // minimum temperature
+  };
+
+  gsl_siman_solve (
+    rng,
+    &xp0,
+    energy,
+    step,
+    distance,
+    print_cfg, // print_position
+    NULL, // copy func
+    NULL, // copy cons
+    NULL, // destructor
+    sizeof (double), // element size
+    params
+  );
+
+  gsl_rng_free (rng);
+  CAMLreturn (caml_copy_double (xp0));
 }

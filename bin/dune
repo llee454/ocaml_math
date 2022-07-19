@@ -1,14 +1,12 @@
 (executable
- (public_name vim_merlin_test)
+ (public_name ocaml-gsl-demo)
  (name main)
  (libraries
     core
     core_kernel
     lwt
     lwt.unix
-    vim_merlin_test
     gsl
-    plplot
   )
   (preprocess (pps
     ppx_jane))

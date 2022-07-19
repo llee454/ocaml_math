@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 
 let sum ~f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. f x)
 
@@ -17,6 +17,13 @@ let%expect_test "pow_int_1" =
 let%expect_test "pow_int_2" =
   printf "%.4f" (pow_int 3.1415 3);
   [%expect {|31.0035|}]
+
+(** Returns x^y *)
+let expt (x : float) (y : float) = exp (y *. log x)
+
+let%expect_test "expt_1" =
+  printf "%.2f" (expt 3.0 7.4);
+  [%expect {|3393.89|}]
 
 external mean : float array -> float = "ocaml_mean"
 
@@ -234,6 +241,7 @@ module Stats_tests = struct
     printf "%.1f" @@ order_stat_approx ~r:20 ~n:20 ~mean:0.0 ~std:1.0;
     [%expect {|1.9|}]
 
+
   (**
     Computes an approximation of mean value of the r-th largest
     values in a random sample of n values drawn from a Gaussian
@@ -274,12 +282,6 @@ module Stats_tests = struct
     printf "%.4f" (order_stat ~r:2 ~n:4);
     [%expect {|-0.2970|}]
 
-  let%expect_test "order_stat_3" =
-    let n = 80 in
-    let os = Array.init n ~f:(fun r -> order_stat ~r ~n) in
-    printf !"%{Sexp}" ([%sexp_of: float array] os);
-    [%expect {||}]
-
   (*
     Computes the Shapiro Francia statistic which parameterizes
     the likelihood that the given sample is drawn from a Gaussian
@@ -293,7 +295,7 @@ module Stats_tests = struct
     sumi xs ~f:(fun r y -> (y -. m) *. os.(r))
     /. Float.sqrt
          (sumi xs ~f:(fun _ y -> Float.square (y -. m)) *. sumi xs ~f:(fun r _ -> Float.square os.(r)))
-
+(*
   let%expect_test "shapiro_francia_stat_1" =
     printf "%.4f"
       (shapiro_francia_stat
@@ -340,6 +342,7 @@ module Stats_tests = struct
            0.593620;
          |]);
     [%expect {||}]
+*)
 
   (*
     Returns the normalized Shapiro Francia Statistics.
@@ -372,6 +375,7 @@ module Stats_tests = struct
     let q = 1.0 -. p in
     if Float.(p >= 0.5) then p -. q else q -. p
 
+(*
   let%expect_test "shapiro_francia_test" =
     printf "%.4f"
       (shapiro_francia_test
@@ -418,10 +422,16 @@ module Stats_tests = struct
            0.593620;
          |]);
     [%expect {||}]
+*)
 
+(*
   let%expect_test "shapiro_francia_test_2" =
     let () = Random.init 5 in
     let xs = Array.init 30 ~f:(fun _ -> Random.float 3.0) in
     printf "%.4f" (shapiro_francia_test xs);
     [%expect {||}]
+*)
 end
+
+external simulated_annealing : float -> float = "ocaml_siman_solve"
+

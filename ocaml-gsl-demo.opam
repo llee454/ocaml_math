@@ -1,0 +1,20 @@
+opam-version: "2.0"
+maintainer: "Larry Darryl Lee Jr."
+synopsis: "A light-weight wrapper for some of the functions defined within the Gnu Scientific Library (GSL)"
+authors: [
+  "Larry Darryl Lee Jr."
+]
+license: "GPLv3"
+homepage: "https://github.com/llee454/ocaml-gsl-demo"
+bug-reports: "https://github.com/llee454/ocaml-gsl-demo/issues"
+depends: [
+  "ocaml"
+  "dune"
+  "core" 
+  "core_kernel"
+  "ppx_jane"
+  "lwt"
+  "lwt_ppx"
+  "merlin"
+]
+

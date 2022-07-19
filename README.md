@@ -12,3 +12,14 @@ In this example I used dune init project to create the dune, dune-project, *.opa
 You will need to install the GSL library as a shared object library (se apt install libgsl-dev) to build this example.
 
 The generated binary will call GSL to compute an integral and a linear regressor and will compute the value and parameters of each.
+
+Initializing the Build Environment
+----------------------------------
+
+```
+opam switch create . ocaml-variants.4.10.0+flambda --no-install
+opam update
+opam install --deps-only .
+dune build
+dune exec bin/main.exe
+```
