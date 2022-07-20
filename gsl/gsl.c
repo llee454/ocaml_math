@@ -20,8 +20,7 @@
 #include <gsl_sf_gamma.h> // gsl_sf_fact
 #include <gsl_randist.h> // gsl_ran_binomial_pdf
 
-#include <gsl_siman.h> // simulated annealing
-#include <gsl_rng.h> // random number generator
+#include <ocaml_siman.h>
 
 CAMLprim value ocaml_gsl_pow_int (value x, value n) {
   CAMLparam2 (x, n);
@@ -122,7 +121,7 @@ double callback (double x, void* params) {
   struct callback_params* p = (struct callback_params*) params;
   y = caml_copy_double (x);
   result = caml_callback (p->h, y);
-  return Double_val (result);
+  CAMLreturnT (double, Double_val (result));
 }
 
 CAMLprim value ocaml_integrate (value f, value lower, value upper) {
@@ -325,7 +324,7 @@ CAMLprim value ocaml_gsl_fit_nlinear (
 
   CAMLreturn (ocaml_f_ks_final);
 }
-
+/*
 struct ocaml_siman_callbacks {
   value copy_fn;
   value energy_fn;
@@ -468,3 +467,4 @@ CAMLprim value ocaml_siman_solve (value copy_fn, value energy_fn, value step_fn,
   fflush (stdout);
   CAMLreturn (xp0.state);
 }
+*/

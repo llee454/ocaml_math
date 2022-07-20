@@ -436,12 +436,12 @@ end
 module Simulated_annealing = struct
 
   external simulated_annealing :
-    copy:('a ref -> 'a ref) ->
-    energy:('a ref -> float) ->
-    step:('a ref -> float -> unit) ->
-    distance:('a ref -> 'a ref -> float) ->
-    init:'a ref ->
-    'a ref = "ocaml_siman_solve"
+    copy:('a -> 'a) ->
+    energy:('a -> float) ->
+    step:('a -> float -> unit) ->
+    dist:('a -> 'a -> float) ->
+    init:'a ->
+    'a = "ocaml_siman_solve"
 
   let f = simulated_annealing
 end

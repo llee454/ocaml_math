@@ -11,10 +11,10 @@ let main =
     let* () = Lwt_io.printlf "integration: result %f err %f" out err in
     let result =
       Simulated_annealing.f
-        ~copy:(fun x -> ref !x)
-        ~energy:(fun x -> (!x +. 1.0) *. (!x +. 1.0))
+        ~copy:(fun x -> print_endline @@ sprintf "[copy] x = %f" !x; ref !x)
+        ~energy:(fun x -> (!x +. 7.0) *. (!x +. 7.0))
         ~step:(fun x dist -> x := !x +. dist)
-        ~distance:(fun x y -> Float.abs (!x -. !y))
+        ~dist:(fun x y -> Float.abs (!x -. !y))
         ~init:(ref 5.0)
     in
     let* () = Lwt_io.printlf "simulated annealing result: %f" !result in
