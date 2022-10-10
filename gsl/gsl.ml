@@ -1,7 +1,6 @@
-open Core_kernel
+open Core
 
 let sum ~f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. f x)
-
 let sumi ~f = Array.foldi ~init:0.0 ~f:(fun i sum x -> sum +. f i x)
 
 let%expect_test "sum_1" =
@@ -124,7 +123,6 @@ end
 
 module Erf = struct
   external f : float -> float = "ocaml_gsl_sf_erf_Z"
-
   external q : float -> float = "ocaml_gsl_sf_erf_Q"
 end
 
@@ -184,6 +182,19 @@ module Nonlinear_fit = struct
     and returns a float; and a set of initial parameter values,
     ks_init; and a set of data values, xs; and returns the set of
     parameter values that minimize the error between f_ks (x)
+
+    Example: the following code snippet fits the following linear function to the given dataset:
+
+      f x = k0 + k1 x
+
+    let open Gsl.Nonlinear_fit in
+    f
+      ~f:Float.((fun { ks = [| k0; k1 |]; x } -> k0 + (k1 * x)))
+      ~ks_init:[| 0.0; 0.0 |] ~xs:[| 0.0; 1.0; 2.0; 3.0; 4.0; 5.0 |]
+      ~ys:[| 3.1415; 5.8598; 8.5781; 11.296; 14.014; 16.733 |]
+    |> function
+    | [| k0; k1 |] -> k0, k1
+    | _ -> failwith "Gsl.Nonlinear_fit.f returned an array of length != 2"
   *)
   external f : f:(t -> float) -> ks_init:float array -> xs:float array -> ys:float array -> float array
     = "ocaml_gsl_fit_nlinear"
@@ -241,7 +252,6 @@ module Stats_tests = struct
     printf "%.1f" @@ order_stat_approx ~r:20 ~n:20 ~mean:0.0 ~std:1.0;
     [%expect {|1.9|}]
 
-
   (**
     Computes an approximation of mean value of the r-th largest
     values in a random sample of n values drawn from a Gaussian
@@ -270,7 +280,8 @@ module Stats_tests = struct
     let Integrate.{ out; _ } =
       Integrate.g ~lower ~upper ~f:(fun x ->
           let p = 1.0 -. Erf.q x in
-          float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x)
+          float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x
+      )
     in
     out
 
@@ -295,7 +306,8 @@ module Stats_tests = struct
     sumi xs ~f:(fun r y -> (y -. m) *. os.(r))
     /. Float.sqrt
          (sumi xs ~f:(fun _ y -> Float.square (y -. m)) *. sumi xs ~f:(fun r _ -> Float.square os.(r)))
-(*
+
+  (*
   let%expect_test "shapiro_francia_stat_1" =
     printf "%.4f"
       (shapiro_francia_stat
@@ -353,7 +365,7 @@ module Stats_tests = struct
 
       mean: ln(ln(n)) - ln(n)
       std: ln(ln(n)) + 2/ln(n)
-    
+
     where n denotes the sample size.
 
     This transformation was originally reported by Roysten (1992a)
@@ -375,7 +387,7 @@ module Stats_tests = struct
     let q = 1.0 -. p in
     if Float.(p >= 0.5) then p -. q else q -. p
 
-(*
+  (*
   let%expect_test "shapiro_francia_test" =
     printf "%.4f"
       (shapiro_francia_test
@@ -424,7 +436,7 @@ module Stats_tests = struct
     [%expect {||}]
 *)
 
-(*
+  (*
   let%expect_test "shapiro_francia_test_2" =
     let () = Random.init 5 in
     let xs = Array.init 30 ~f:(fun _ -> Random.float 3.0) in
@@ -433,8 +445,40 @@ module Stats_tests = struct
 *)
 end
 
-module Simulated_annealing = struct
+(**
+  A demonstration of how to use the simulated annealing function.
 
+  This example fits the following function to the given set of data points:
+             1
+     f(x) = ----
+             x/k
+            e
+  in this case k should converge toward 2.0 (within a small).
+
+  let open Float in
+  let f ~k x = if [%equal: float] k 0.0 then 0.0 else 1.0 / exp (x / k) in
+  let data = [| 1.0; 0.6065; 0.3678; 0.2231; 0.1353 |] in
+  let { k } =
+    let params =
+      Gsl.Simulated_annealing.f
+        ~copy:(fun params ->
+          let { k } = !params in
+          ref { k })
+        ~energy:(fun params ->
+          let { k } = !params in
+          Gsl.sumi data ~f:(fun i y -> Gsl.pow_int (f ~k (float i) - y) 2))
+        ~step:(fun params delta ->
+          let { k } = !params in
+          params := { k = k + delta })
+        ~dist:(fun params0 params1 ->
+          let { k = k0 } = !params0 in
+          let { k = k1 } = !params1 in
+          Float.abs (k0 - k1))
+        ~init:(ref { k = 1.0 })
+    in
+    !params
+*)
+module Simulated_annealing = struct
   external simulated_annealing :
     copy:('a -> 'a) ->
     energy:('a -> float) ->
