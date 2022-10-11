@@ -1,6 +1,6 @@
 open Core
 
-let sum ~f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. f x)
+let sum ?f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. Option.value_map f ~default:x ~f:(fun f -> f x))
 let sumi ~f = Array.foldi ~init:0.0 ~f:(fun i sum x -> sum +. f i x)
 
 let%expect_test "sum_1" =
@@ -24,12 +24,6 @@ let%expect_test "expt_1" =
   printf "%.2f" (expt 3.0 7.4);
   [%expect {|3393.89|}]
 
-external mean : float array -> float = "ocaml_mean"
-
-let%expect_test "mean_1" =
-  printf "%.4f" (mean [| 3.1; 2.7; -1.5; 0.5; -3.12 |]);
-  [%expect {|0.3360|}]
-
 external fact : int -> float = "ocaml_gsl_sf_fact"
 
 let%expect_test "fact_1" =
@@ -43,6 +37,34 @@ let%expect_test "fact_2" =
 let%expect_test "fact_3" =
   printf "%.1f" (fact 5);
   [%expect {|120.0|}]
+
+external matrix_mult : float array array -> float array array -> float array array = "ocaml_matrix_mult"
+
+let%expect_test "matrix_mult_1" =
+  let m1 = [| [| 1.0; 1.0; 2.0 |]; [| 3.0; 4.0; 5.0 |] |] in
+  let m2 = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |]; [| 10.0; 11.0 |] |] in
+  matrix_mult m1 m2 |> printf !"%{sexp: float array array}";
+  [%expect {|((34 38) (100 112))|}]
+
+let matrix_transpose (xs : float array array) : float array array =
+  let nrows = Array.length xs in
+  if [%equal: int] nrows 0
+  then [||]
+  else (
+    let ncols = Array.length xs.(0) in
+    Array.init ncols ~f:(fun j -> Array.init nrows ~f:(fun i -> xs.(i).(j)))
+  )
+
+let%expect_test "matrix_transpose_1" =
+  let xs = [| [| 1.0; 1.0; 2.0 |]; [| 3.0; 4.0; 5.0 |] |] in
+  matrix_transpose xs |> printf !"%{sexp: float array array}";
+  [%expect {|((1 3) (1 4) (2 5))|}]
+
+external mean : float array -> float = "ocaml_mean"
+
+let%expect_test "mean_1" =
+  printf "%.4f" (mean [| 3.1; 2.7; -1.5; 0.5; -3.12 |]);
+  [%expect {|0.3360|}]
 
 external cdf_gaussian_p : x:float -> std:float -> float = "ocaml_gsl_cdf_gaussian_P"
 
@@ -109,6 +131,69 @@ external pdf_binomial : k:int -> p:float -> n:int -> float = "ocaml_gsl_ran_bino
 let%expect_test "pdf_binomial_1" =
   printf "%.4f" (pdf_binomial ~k:5 ~p:0.5 ~n:10);
   [%expect {|0.2461|}]
+
+external covariance : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_covariance"
+
+let%expect_test "covariance_1" =
+  printf "%.4f"
+    (covariance ~xs:[| 0.0; 1.0; 2.0; 3.0; 4.0; 5.0 |]
+       ~ys:[| -0.069; 0.0841; 3.3745; 3.9718; 3.6418; 3.9538 |]
+    );
+  [%expect {|3.1384|}]
+
+let get_covariance_matrix (xs : float array array) : float array array =
+  let n = Array.length xs in
+  if [%equal: int] n 0
+  then Array.make_matrix ~dimx:0 ~dimy:0 0.0
+  else (
+    let cov = Array.make_matrix ~dimx:n ~dimy:n 0.0 in
+    for i = 0 to n - 1 do
+      for j = 0 to n - 1 do
+        cov.(i).(j) <- covariance ~xs:xs.(i) ~ys:xs.(j)
+      done
+    done;
+    cov
+  )
+
+module Eigen = struct
+  type t = {
+    values: float array;
+    vectors: float array array;
+  }
+  [@@deriving sexp]
+
+  (**
+    Accepts a symmetric matrix and returns its eigenvalues and eigenvectors.
+    Note: the eigenvectors are normalized to unit length.
+  *)
+  external symm : float array array -> t = "ocaml_gsl_eigen_symmv"
+
+  let%expect_test "eigen_1" =
+    let m = [| [| 1.0; 0.0; 0.0 |]; [| 0.0; 1.0; 0.0 |]; [| 0.0; 0.0; 1.0 |] |] in
+    symm m |> printf !"%{sexp: t}";
+    [%expect {|((values (1 1 1)) (vectors ((1 0 0) (0 1 0) (0 0 1))))|}]
+end
+
+module Pca = struct
+  type t = {
+    covariance_matrix: float array array;
+    components: Eigen.t;
+    proportion_var: float array;
+  }
+  [@@deriving sexp]
+
+  (**
+    Compute the eigenvectors and eigenvalues of the covariance matrix of
+    the given data. The result is the Principal Component Analysis (PCA)
+    of the data.
+  *)
+  let f (xs : float array array) : t =
+    let covariance_matrix = get_covariance_matrix xs in
+    let (Eigen.{ values; _ } as components) = Eigen.symm covariance_matrix in
+    let total_var = sum values in
+    let proportion_var = Array.map values ~f:Float.((fun x -> x / total_var)) in
+    { covariance_matrix; components; proportion_var }
+end
 
 module Linear_fit = struct
   type t = {
