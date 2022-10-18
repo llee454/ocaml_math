@@ -143,6 +143,23 @@ CAMLprim value ocaml_gsl_stats_covariance (value xs, value ys) {
   CAMLreturn (caml_copy_double (result));
 }
 
+CAMLprim value ocaml_gsl_stats_correlation (value xs, value ys) {
+  CAMLparam2 (xs, ys);
+  const size_t nxs = Wosize_val (xs);
+  const size_t nys = Wosize_val (ys);
+  const size_t n = nxs < nys ? nxs : nys;
+  double* x = malloc (n * sizeof (double));
+  double* y = malloc (n * sizeof (double));
+  for (size_t i = 0; i < n; i ++) {
+    x [i] = Double_field (xs, i);
+    y [i] = Double_field (ys, i);
+  }
+  double result = gsl_stats_correlation (x, 1, y, 1, n);
+  free (x);
+  free (y);
+  CAMLreturn (caml_copy_double (result));
+}
+
 CAMLprim value ocaml_gsl_eigen_symmv (value m) {
   CAMLparam1 (m);
   CAMLlocal4 (result, result_vals, result_vecs, result_vec);

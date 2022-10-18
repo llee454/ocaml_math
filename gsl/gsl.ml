@@ -141,6 +141,15 @@ let%expect_test "covariance_1" =
     );
   [%expect {|3.1384|}]
 
+external correlation : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_correlation"
+
+let%expect_test "correlation_1" =
+  printf "%.4f"
+    (covariance ~xs:[| 0.0; 1.0; 2.0; 3.0; 4.0; 5.0 |]
+       ~ys:[| -1.351; -0.149; 5.299; 2.7622; 3.5947; 3.9727 |]
+    );
+  [%expect {|0.7348|}]
+
 let get_covariance_matrix (xs : float array array) : float array array =
   let n = Array.length xs in
   if [%equal: int] n 0
