@@ -22,6 +22,8 @@ struct ocaml_get_fit_nlinear_f_data {
   value   f;
   double* xs;
   double* ys;
+  value   f_ks;
+  value   f_arg;
 };
 
 // computes the value of the fitted function for the given function parameters and data values.
@@ -30,21 +32,15 @@ int ocaml_get_fit_nlinear_f (
   void* data,             // the fitted function parameters and data values
   gsl_vector* f_res       // the fitted function output values (may be 2 or more if f is multidimensional)
 ) {
-  CAMLparam0 ();
-  CAMLlocal3 (ocaml_f, ocaml_f_ks, ocaml_f_arg);
-
-  size_t n_xs = ((struct ocaml_get_fit_nlinear_f_data*) data)->n_xs;   // the number of data points
-  size_t n_ks = ((struct ocaml_get_fit_nlinear_f_data*) data)->n_ks;   // the number of fitted function parameters
-  ocaml_f     = ((struct ocaml_get_fit_nlinear_f_data*) data)->f; // the fitted function
-  double* xs  = ((struct ocaml_get_fit_nlinear_f_data*) data)->xs;
-  double* ys  = ((struct ocaml_get_fit_nlinear_f_data*) data)->ys;
-
-  // TODO: are these necessary?
-  caml_register_global_root (&ocaml_f); // TODO: is this necessary?
+  size_t n_xs   = ((struct ocaml_get_fit_nlinear_f_data*) data)->n_xs;   // the number of data points
+  size_t n_ks   = ((struct ocaml_get_fit_nlinear_f_data*) data)->n_ks;   // the number of fitted function parameters
+  value ocaml_f = ((struct ocaml_get_fit_nlinear_f_data*) data)->f; // the fitted function
+  double* xs    = ((struct ocaml_get_fit_nlinear_f_data*) data)->xs;
+  double* ys    = ((struct ocaml_get_fit_nlinear_f_data*) data)->ys;
+  value ocaml_f_ks  = ((struct ocaml_get_fit_nlinear_f_data*) data)->f_ks;
+  value ocaml_f_arg = ((struct ocaml_get_fit_nlinear_f_data*) data)->f_arg;
 
   // the fitted function parameters
-  ocaml_f_ks = caml_alloc (n_ks, Double_array_tag);
-  caml_register_global_root (&ocaml_f_ks);
   for (size_t i = 0; i < n_ks; i ++) {
     Store_double_field (ocaml_f_ks, i, gsl_vector_get (f_ks, i));
   }
@@ -52,19 +48,12 @@ int ocaml_get_fit_nlinear_f (
   // call the fitted function on the given data values with the current parameter values.
   for (size_t i = 0; i < n_xs; i ++) {
     // construct the argument passed to the fitted function
-    ocaml_f_arg = caml_alloc (2, 0);
-    caml_register_global_root (&ocaml_f_arg);
     Store_field (ocaml_f_arg, 0, ocaml_f_ks);
     Store_field (ocaml_f_arg, 1, caml_copy_double (xs [i]));
 
     // call the fitted function and store the result
     gsl_vector_set (f_res, i, ys [i] - Double_val (caml_callback (ocaml_f, ocaml_f_arg)));
-
-    caml_remove_global_root (&ocaml_f_arg);
   }
-
-  caml_remove_global_root (&ocaml_f);
-  caml_remove_global_root (&ocaml_f_ks);
 
   return GSL_SUCCESS;
 }
@@ -81,7 +70,7 @@ CAMLprim value ocaml_gsl_fit_nlinear (
   value ocaml_ys
 ) {
   CAMLparam4 (ocaml_f, ocaml_f_ks_init, ocaml_xs, ocaml_ys);
-  CAMLlocal2 (ocaml_f_ks_final, ocaml_f_arg);
+  CAMLlocal3 (ocaml_f_ks_final, ocaml_f_arg, ocaml_f_ks);
 
   const size_t max_iter = 100; // maximum number of iterations
   const double x_tol = 0.00001; // x error tolerance
@@ -101,14 +90,21 @@ CAMLprim value ocaml_gsl_fit_nlinear (
     ys [i] = Double_field (ocaml_ys, i);
   }
 
+  ocaml_f_ks  = caml_alloc (p, Double_array_tag);
+  ocaml_f_arg = caml_alloc (2, 0);
+
   struct ocaml_get_fit_nlinear_f_data f_params = {
-    .n_xs = n,
-    .n_ks = p,
-    .f    = ocaml_f,
-    .xs   = xs,
-    .ys   = ys
+    .n_xs  = n,
+    .n_ks  = p,
+    .f     = ocaml_f,
+    .xs    = xs,
+    .ys    = ys,
+    .f_ks  = ocaml_f_ks,
+    .f_arg = ocaml_f_arg
   };
   caml_register_global_root (&f_params.f);
+  caml_register_global_root (&f_params.f_ks);
+  caml_register_global_root (&f_params.f_arg);
 
   gsl_vector* ks_init = gsl_vector_alloc (p);
   for (size_t i = 0; i < p; i ++) {
@@ -146,17 +142,19 @@ CAMLprim value ocaml_gsl_fit_nlinear (
 
   // get the estimate fitted function parameters.
   ocaml_f_ks_final = caml_alloc (p, Double_array_tag);
-  caml_register_global_root (&ocaml_f_ks_final);
   for (size_t i = 0; i < p; i ++) {
     Store_double_field (ocaml_f_ks_final, i,
       gsl_vector_get (w->x, i));
   }
- 
+
   // clean up allocated memory resources.
   gsl_multifit_nlinear_free (w);
   gsl_vector_free (ks_init);
   free (xs);
   free (ys);
+  caml_remove_global_root (&f_params.f);
+  caml_remove_global_root (&f_params.f_ks);
+  caml_remove_global_root (&f_params.f_arg);
 
   CAMLreturn (ocaml_f_ks_final);
 }
