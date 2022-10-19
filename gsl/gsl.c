@@ -55,6 +55,11 @@ CAMLprim value ocaml_gsl_sf_fact (value x) {
   CAMLreturn (caml_copy_double (gsl_sf_fact ((unsigned int) (Int_val (x)))));
 }
 
+CAMLprim value ocaml_gsl_sf_gamma (value x) {
+  CAMLparam1 (x);
+  CAMLreturn (caml_copy_double (gsl_sf_gamma ((Double_val (x)))));
+}
+
 CAMLprim value ocaml_matrix_mult (value xs, value ys) {
   CAMLparam2 (xs, ys);
   CAMLlocal2 (result, result_row);
@@ -119,11 +124,18 @@ CAMLprim value ocaml_gsl_cdf_gaussian_Pinv (value x, value ndf) {
 
 CAMLprim value ocaml_gsl_ran_binomial_pdf (value k, value p, value n) {
   CAMLparam3 (k, p, n);
-  CAMLlocal1 (result);
   CAMLreturn (caml_copy_double (gsl_ran_binomial_pdf (
     (unsigned int) (Int_val (k)),
     Double_val (p),
     (unsigned int) (Int_val (n)))));
+}
+
+CAMLprim value ocaml_gsl_ran_gamma_pdf (value a, value b, value x) {
+  CAMLparam3 (a, b, x);
+   CAMLreturn (caml_copy_double (gsl_ran_gamma_pdf (
+     Double_val (x),
+     Double_val (a),
+     Double_val (b))));
 }
 
 CAMLprim value ocaml_gsl_stats_covariance (value xs, value ys) {

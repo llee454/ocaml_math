@@ -40,6 +40,10 @@ int ocaml_get_fit_nlinear_f (
   value ocaml_f_ks  = ((struct ocaml_get_fit_nlinear_f_data*) data)->f_ks;
   value ocaml_f_arg = ((struct ocaml_get_fit_nlinear_f_data*) data)->f_arg;
 
+  caml_register_global_root (&ocaml_f);
+  caml_register_global_root (&ocaml_f_ks);
+  caml_register_global_root (&ocaml_f_arg);
+
   // the fitted function parameters
   for (size_t i = 0; i < n_ks; i ++) {
     Store_double_field (ocaml_f_ks, i, gsl_vector_get (f_ks, i));
@@ -54,6 +58,10 @@ int ocaml_get_fit_nlinear_f (
     // call the fitted function and store the result
     gsl_vector_set (f_res, i, ys [i] - Double_val (caml_callback (ocaml_f, ocaml_f_arg)));
   }
+
+  caml_remove_global_root (&ocaml_f);
+  caml_remove_global_root (&ocaml_f_ks);
+  caml_remove_global_root (&ocaml_f_arg);
 
   return GSL_SUCCESS;
 }
@@ -134,7 +142,7 @@ CAMLprim value ocaml_gsl_fit_nlinear (
   gsl_multifit_nlinear_init (ks_init, &fdf, w);
 
   int status = gsl_multifit_nlinear_driver (max_iter,
-    x_tol, g_tol, f_tol, 
+    x_tol, g_tol, f_tol,
     NULL, // no callback function
     NULL, // no callback function params
     &info, w

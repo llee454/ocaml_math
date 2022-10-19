@@ -38,6 +38,7 @@ let%expect_test "fact_3" =
   printf "%.1f" (fact 5);
   [%expect {|120.0|}]
 
+external gamma : float -> float = "ocaml_gsl_sf_gamma"
 external matrix_mult : float array array -> float array array -> float array array = "ocaml_matrix_mult"
 
 let%expect_test "matrix_mult_1" =
@@ -132,6 +133,7 @@ let%expect_test "pdf_binomial_1" =
   printf "%.4f" (pdf_binomial ~k:5 ~p:0.5 ~n:10);
   [%expect {|0.2461|}]
 
+external pdf_gamma : a:float -> b:float -> float -> float = "ocaml_gsl_ran_gamma_pdf"
 external covariance : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_covariance"
 
 let%expect_test "covariance_1" =
@@ -270,6 +272,7 @@ module Nonlinear_fit = struct
     (* parameter values *)
     x: float; (* argument value *)
   }
+  [@@deriving sexp]
 
   (*
     Accepts a function, f, that has parameters ks and accepts a float
