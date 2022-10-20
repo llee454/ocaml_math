@@ -37,7 +37,26 @@ CAMLprim value ocaml_mean (value xs) {
   for (size_t i = 0; i < n; i ++) {
     x [i] = Double_field (xs, i);
   }
-  CAMLreturn (caml_copy_double (gsl_stats_mean (x, 1, n)));
+  double res = gsl_stats_mean (x, 1, n);
+  free (x);
+  CAMLreturn (caml_copy_double (res));
+}
+
+CAMLprim value ocaml_gsl_stats_variance (value xs) {
+  CAMLparam1 (xs);
+  size_t n = Wosize_val (xs);
+  double* x = malloc (n * sizeof (double));
+  for (size_t i = 0; i < n; i ++) {
+    x [i] = Double_field (xs, i);
+  }
+  double res = gsl_stats_variance (x, 1, n);
+  for (size_t i = 0; i < n; i ++) {
+    printf ("x [%lu] = %0.04f\n", i, x [i]);
+  }
+  printf ("res = %0.04f\n", res);
+  fflush (stdout);
+  free (x);
+  CAMLreturn (caml_copy_double (res));
 }
 
 CAMLprim value ocaml_gsl_sf_erf_Z (value x) {

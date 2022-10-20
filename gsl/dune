@@ -4,7 +4,7 @@
     core_kernel
   )
  (inline_tests)
-  (preprocess (pps ppx_jane))
+  (preprocess (pps ppx_jane ppx_profile))
   (foreign_stubs (language c) (names gsl)
     (flags -I. -I/usr/include/gsl -I/usr/local/include/gsl))
   (c_library_flags (-lgsl))

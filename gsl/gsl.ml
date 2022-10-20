@@ -67,6 +67,12 @@ let%expect_test "mean_1" =
   printf "%.4f" (mean [| 3.1; 2.7; -1.5; 0.5; -3.12 |]);
   [%expect {|0.3360|}]
 
+external sample_variance : float array -> float = "ocaml_gsl_stats_variance"
+
+let%expect_test "sample_variance_1" =
+  printf "%.4f" (mean [| 0.3786; -1.204; 1.9441; -1.151; -1.184 |]);
+  [%expect {|1.9508|}]
+
 external cdf_gaussian_p : x:float -> std:float -> float = "ocaml_gsl_cdf_gaussian_P"
 
 let%expect_test "cdf_gaussian_p_1" =
@@ -197,6 +203,8 @@ module Pca = struct
     Compute the eigenvectors and eigenvalues of the covariance matrix of
     the given data. The result is the Principal Component Analysis (PCA)
     of the data.
+
+    Note: each record is repreented by a column in xs. each data factor is represented by a row in xs.
   *)
   let f (xs : float array array) : t =
     let covariance_matrix = get_covariance_matrix xs in
