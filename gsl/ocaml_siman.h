@@ -36,8 +36,7 @@ struct ocaml_siman_object {
 };
 
 double ocaml_siman_energy (struct ocaml_siman_object* xp) {
-  CAMLparam0 ();
-  CAMLreturnT (double, Double_val (caml_callback (xp->callbacks->energy, xp->state)));
+  return Double_val (caml_callback (xp->callbacks->energy, xp->state));
 }
 
 void ocaml_siman_step (
@@ -45,29 +44,24 @@ void ocaml_siman_step (
   struct ocaml_siman_object* xp,
   double step_size
 ) {
-  CAMLparam0 ();
   double step = (2 * gsl_rng_uniform (rng) - 1) * step_size;
   caml_callback2 (xp->callbacks->step, xp->state, caml_copy_double (step));
-  CAMLreturn0;
 }
 
 double ocaml_siman_dist (
   struct ocaml_siman_object* xp,
   struct ocaml_siman_object* yp
 ) {
-  CAMLparam0 ();
-  CAMLreturnT (double, Double_val (caml_callback2 (xp->callbacks->dist, xp->state, yp->state)));
+  return Double_val (caml_callback2 (xp->callbacks->dist, xp->state, yp->state));
 }
 
 void ocaml_siman_copy_into (
   struct ocaml_siman_object* src,
   struct ocaml_siman_object* dst
 ) {
-  CAMLparam0 ();
   dst->callbacks = src->callbacks;
   dst->state = caml_callback (src->callbacks->copy, src->state);
   caml_register_global_root (&(*dst).state);
-  CAMLreturn0;
 }
 
 void* ocaml_siman_copy (struct ocaml_siman_object* src) {
@@ -77,13 +71,11 @@ void* ocaml_siman_copy (struct ocaml_siman_object* src) {
 }
 
 void ocaml_siman_destroy (struct ocaml_siman_object* xp) {
+  caml_remove_global_root (&(*xp).state);
   free (xp);
 }
 
-void ocaml_siman_print (struct ocaml_siman_object* xp) {
-  CAMLparam0 ();
-  CAMLreturn0;
-}
+void ocaml_siman_print (struct ocaml_siman_object* xp) {}
 
 CAMLprim value ocaml_siman_solve (
   value copy,
@@ -93,6 +85,7 @@ CAMLprim value ocaml_siman_solve (
   value init
 ) {
   CAMLparam5 (copy, energy, step, dist, init);
+  CAMLlocal1 (res);
 
   struct ocaml_siman_callbacks callbacks = {
     .copy   = copy,
@@ -138,7 +131,14 @@ CAMLprim value ocaml_siman_solve (
     params
   );
 
-  gsl_rng_free (rng);
+  res = obj.state;
 
-  CAMLreturn (obj.state);
+  gsl_rng_free (rng);
+  caml_remove_global_root (&callbacks.copy);
+  caml_remove_global_root (&callbacks.energy);
+  caml_remove_global_root (&callbacks.step);
+  caml_remove_global_root (&callbacks.dist);
+  caml_remove_global_root (&obj.state);
+
+  CAMLreturn (res);
 }

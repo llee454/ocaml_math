@@ -50,11 +50,6 @@ CAMLprim value ocaml_gsl_stats_variance (value xs) {
     x [i] = Double_field (xs, i);
   }
   double res = gsl_stats_variance (x, 1, n);
-  for (size_t i = 0; i < n; i ++) {
-    printf ("x [%lu] = %0.04f\n", i, x [i]);
-  }
-  printf ("res = %0.04f\n", res);
-  fflush (stdout);
   free (x);
   CAMLreturn (caml_copy_double (res));
 }
