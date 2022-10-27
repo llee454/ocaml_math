@@ -578,31 +578,37 @@ end
   let { k } =
     let params =
       Gsl.Simulated_annealing.f
-        ~copy:(fun params ->
-          let { k } = !params in
-          ref { k })
-        ~energy:(fun params ->
-          let { k } = !params in
-          Gsl.sumi data ~f:(fun i y -> Gsl.pow_int (f ~k (float i) - y) 2))
-        ~step:(fun params delta ->
-          let { k } = !params in
-          params := { k = k + delta })
-        ~dist:(fun params0 params1 ->
-          let { k = k0 } = !params0 in
-          let { k = k1 } = !params1 in
-          Float.abs (k0 - k1))
-        ~init:(ref { k = 1.0 })
+        {
+          copy = (fun params ->
+            let { k } = !params in
+            ref { k });
+          energy = (fun params ->
+            let { k } = !params in
+            Gsl.sumi data ~f = (fun i y -> Gsl.pow_int (f ~k (float i) - y) 2));
+          step = (fun params delta ->
+            let { k } = !params in
+            params  = = { k = k + delta });
+          dist = (fun params0 params1 ->
+            let { k = k0 } = !params0 in
+            let { k = k1 } = !params1 in
+            Float.abs (k0 - k1));
+          print = (fun _ -> ());
+          init = (ref { k = 1.0 });
+        }
     in
     !params
 *)
 module Simulated_annealing = struct
-  external simulated_annealing :
-    copy:('a -> 'a) ->
-    energy:('a -> float) ->
-    step:('a -> float -> unit) ->
-    dist:('a -> 'a -> float) ->
-    init:'a ->
-    'a = "ocaml_siman_solve"
+  type 'a t = {
+    copy: 'a -> 'a;
+    energy: 'a -> float;
+    step: 'a -> float -> unit;
+    dist: 'a -> 'a -> float;
+    init: 'a;
+    print: ('a -> unit) option;
+  }
+
+  external simulated_annealing : 'a t -> 'a = "ocaml_siman_solve"
 
   let f = simulated_annealing
 end
