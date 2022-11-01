@@ -301,20 +301,27 @@ CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
   double out;
   double err;
   size_t limit = 10;
-  struct callback_params params = {
-    .h = f
-  };
-  gsl_function F = {
-    .function = &callback,
-    .params   = &params
-  };
+
+  struct callback_params* params = malloc (sizeof (struct callback_params));
+  params->h = f;
+  caml_register_global_root (&params->h);
+
+  gsl_function* F = malloc (sizeof (gsl_function));
+  F->function = &callback;
+  F->params   = params;
+
   gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
-  int status =  gsl_integration_qag (&F, Double_val (lower), Double_val (upper), 0.0001, 0, limit, GSL_INTEG_GAUSS61, w, &out, &err);
+  int status =  gsl_integration_qag (F, Double_val (lower), Double_val (upper), 0.0001, 0, limit, GSL_INTEG_GAUSS61, w, &out, &err);
   gsl_integration_workspace_free (w);
   result = caml_alloc (3, 0);
   Store_field (result, 0, caml_copy_double (out));
   Store_field (result, 1, caml_copy_double (err));
   Store_field (result, 2, Val_long (0));
+
+  caml_remove_global_root (&params->h);
+  free (params);
+  free (F);
+
   CAMLreturn (result);
 }
 

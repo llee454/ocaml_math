@@ -45,8 +45,7 @@ void ocaml_siman_step (
   struct ocaml_siman_object* xp,
   double step_size
 ) {
-  double step = (2 * gsl_rng_uniform (rng) - 1) * step_size;
-  caml_callback2 (xp->callbacks->step, xp->state, caml_copy_double (step));
+  caml_callback2 (xp->callbacks->step, xp->state, caml_copy_double (step_size));
 }
 
 double ocaml_siman_dist (
@@ -62,7 +61,7 @@ void ocaml_siman_copy_into (
 ) {
   dst->callbacks = src->callbacks;
   dst->state = caml_callback (src->callbacks->copy, src->state);
-  caml_register_global_root (&(*dst).state);
+  caml_register_global_root (&(dst->state));
 }
 
 void* ocaml_siman_copy (struct ocaml_siman_object* src) {
@@ -72,7 +71,7 @@ void* ocaml_siman_copy (struct ocaml_siman_object* src) {
 }
 
 void ocaml_siman_destroy (struct ocaml_siman_object* xp) {
-  caml_remove_global_root (&(*xp).state);
+  caml_remove_global_root (&(xp->state));
   free (xp);
 }
 
