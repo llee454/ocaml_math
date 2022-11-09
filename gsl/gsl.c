@@ -8,6 +8,7 @@
 #include <caml/mlvalues.h>
 #include <caml/memory.h> // CAMLreturn
 #include <caml/alloc.h> // caml_copy
+#include <caml/signals.h> // control the runtime
 
 #include <gsl_errno.h>
 #include <gsl_math.h> // log1p
@@ -114,6 +115,11 @@ CAMLprim value ocaml_matrix_mult (value xs, value ys) {
   gsl_matrix_free (y);
   gsl_matrix_free (z);
   CAMLreturn (result);
+}
+
+CAMLprim value ocaml_gsl_ran_gaussian_pdf (value mean, value std, value x) {
+  CAMLparam3 (mean, std, x);
+  CAMLreturn (caml_copy_double (gsl_ran_gaussian_pdf (Double_val (x) - Double_val (mean), Double_val (std))));
 }
 
 CAMLprim value ocaml_gsl_cdf_gaussian_P (value x, value std) {
@@ -234,15 +240,15 @@ CAMLprim value ocaml_gsl_eigen_symmv (value m) {
 CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {
   CAMLparam2 (xs, ys);
   CAMLlocal1 (result);
-  // BUG: wrong allocation size (Wosize * sizeof double)
-  double* x = malloc (Wosize_val (xs));
+  double* x = malloc (Wosize_val (xs) * sizeof (double));
   for (size_t i = 0; i < Wosize_val (xs); i ++) {
     x [i] = Double_field (xs, i);
   }
-  double* y = malloc (Wosize_val (ys));
+  double* y = malloc (Wosize_val (ys) * sizeof (double));
   for (size_t i = 0; i < Wosize_val (ys); i ++) {
     y [i] = Double_field (ys, i);
   }
+  caml_enter_blocking_section ();
   const size_t xstride = 1;
   const size_t ystride = 1;
   const size_t n = 3;
@@ -255,6 +261,7 @@ CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {
   int status = gsl_fit_linear (x, xstride, y, ystride, n, &c0, &c1, &cov00, &cov01, &cov11, &sumsq);
   free (x);
   free (y);
+  caml_leave_blocking_section ();
 
   // Note: OCaml represents records whose fields are all floats as double array blocks.
   result = caml_alloc (2, Double_array_tag);
