@@ -281,6 +281,12 @@ module Integrate = struct
     let { out; _ } = h ~f:Float.((fun x -> 2.0 ** ~-(square x))) in
     printf "%.8f" out;
     [%expect {|2.12893404|}]
+
+  external integration_qagp : f:(float -> float) -> lower:float -> upper:float -> singularities:float array -> t
+    = "ocaml_integration_qagp"
+
+  let qagp = integration_qagp
+
 end
 
 module Nonlinear_fit = struct
