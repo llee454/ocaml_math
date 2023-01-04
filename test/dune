@@ -1,2 +1,1 @@
-(test
- (name vim_merlin_test))
+(test (name test))
