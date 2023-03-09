@@ -7,7 +7,15 @@
  (inline_tests)
   (preprocess (pps ppx_jane ppx_profile))
   (foreign_stubs (language c) (names asemio_stats)
-    (flags -I. -I/usr/include/gsl -I/usr/local/include/gsl))
-  (c_library_flags (-lgsl))
-  ; (install_c_headers gsl)
+    (flags -I. (:include include.%{system}.dune)))
+  (foreign_archives gslcblas gsl)
+)
+
+(rule
+  (targets libgslcblas.a libgsl.a)
+  (action (bash "
+    (cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a .) \
+    && (cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a .)
+  "))
+  (mode standard)
 )
