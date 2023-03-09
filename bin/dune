@@ -2,11 +2,11 @@
  (name main)
  (libraries
     core
-    core_kernel
     lwt
     lwt.unix
     asemio_stats
   )
   (preprocess (pps
     ppx_jane))
+  (modes exe)
 )

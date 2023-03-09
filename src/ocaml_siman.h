@@ -125,9 +125,9 @@ CAMLprim value ocaml_siman_solve (value args){
   };
 
   gsl_siman_print_t printer = NULL;
-//   if (Is_some (print)) {
-//      printer = (gsl_siman_print_t) ocaml_siman_print;
-//   }
+  if (Is_some (print)) {
+     printer = (gsl_siman_print_t) ocaml_siman_print;
+  }
 
   gsl_siman_solve (
     rng,

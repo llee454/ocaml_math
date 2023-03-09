@@ -1,10 +1,8 @@
 (library
   (name asemio_stats)
   (public_name asemio_stats)
-  (libraries
-    core_kernel
-  )
- (inline_tests)
+  (libraries core)
+  (inline_tests)
   (preprocess (pps ppx_jane ppx_profile))
   (foreign_stubs (language c) (names asemio_stats)
     (flags -I. (:include include.%{system}.dune)))
@@ -12,10 +10,11 @@
 )
 
 (rule
-  (targets libgslcblas.a libgsl.a)
+  (targets libgslcblas.a libgsl.a dllgsl.so dllgslcblas.so)
   (action (bash "
     (cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a .) \
-    && (cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a .)
+    && (cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a .) \
+    && touch dllgsl.so dllgslcblas.so # CAN I BE FREE OF THIS???
   "))
   (mode standard)
 )

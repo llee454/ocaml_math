@@ -12,9 +12,8 @@ pin-depends: [
 ]
 depends: [
   "ocaml"
-  "dune"
+  "dune" { = "3.5.0" }
   "core"
-  "core_kernel"
   "ppx_jane"
   "lwt"
   "lwt_ppx"
