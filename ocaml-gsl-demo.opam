@@ -16,5 +16,8 @@ depends: [
   "lwt"
   "lwt_ppx"
   "merlin"
+  "ppx_profile" { = "1.0.0" }
+  "conf-gsl"
+  "conf-openblas"
 ]
 

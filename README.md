@@ -24,6 +24,8 @@ dune build
 dune exec bin/main.exe
 ```
 
+PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/Cellar/openblas/0.3.20/lib/pkgconfig/ opam reinstall conf-openblas
+
 Running Unit Tests
 ------------------
 

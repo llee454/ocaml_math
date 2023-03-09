@@ -1,0 +1,83 @@
+diff --git a/.DS_Store b/.DS_Store
+index c533643..91bb3a4 100644
+Binary files a/.DS_Store and b/.DS_Store differ
+diff --git a/README.md b/README.md
+index 3810ccf..cb9b16d 100644
+--- a/README.md
++++ b/README.md
+@@ -24,6 +24,8 @@ dune build
+ dune exec bin/main.exe
+ ```
+ 
++ PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/Cellar/openblas/0.3.20/lib/pkgconfig/ opam reinstall conf-openblas
++
+ Running Unit Tests
+ ------------------
+ 
+diff --git a/bin/main.ml b/bin/main.ml
+index 560caea..043fae2 100644
+--- a/bin/main.ml
++++ b/bin/main.ml
+@@ -10,12 +10,14 @@ let main =
+     let Integrate.{ out; err; _ } = Integrate.f ~f:(fun x -> Float.log1p x) ~lower:0.1 ~upper:0.5 in
+     let* () = Lwt_io.printlf "integration: result %f err %f" out err in
+     let result =
+-      Simulated_annealing.f
+-        ~copy:(fun x -> ref !x)
+-        ~energy:(fun x -> (!x +. 7.0) *. (!x +. 7.0))
+-        ~step:(fun x dist -> x := !x +. dist)
+-        ~dist:(fun x y -> Float.abs (!x -. !y))
+-        ~init:(ref 5.0)
++      Simulated_annealing.f {
++        copy=(fun x -> ref !x);
++        energy=(fun x -> (!x +. 7.0) *. (!x +. 7.0));
++        step=(fun x dist -> x := !x +. dist);
++        dist=(fun x y -> Float.abs (!x -. !y));
++        init=(ref 5.0);
++        print = None
++      }
+     in
+     let* () = Lwt_io.printlf "simulated annealing result: %f" !result in
+     Lwt.return_unit
+diff --git a/gsl/dune b/gsl/dune
+index a1a0d26..6a8e55b 100644
+--- a/gsl/dune
++++ b/gsl/dune
+@@ -1,6 +1,6 @@
+ (library
+   (name gsl)
+-  (public_name gsl)
++  (public_name ocaml-gsl-demo.gsl)
+   (libraries
+     core_kernel
+   )
+@@ -9,5 +9,5 @@
+   (foreign_stubs (language c) (names gsl)
+     (flags -I. -I/usr/include/gsl -I/usr/local/include/gsl))
++]
+ depends: [
+   "ocaml"
+   "dune"
+-  "core" 
++  "core"
+   "core_kernel"
+   "ppx_jane"
+   "lwt"
+   "lwt_ppx"
+   "merlin"
++  "ppx_profile" { = "1.0.0" }
++  "conf-gsl"
++  "conf-openblas"
+ ]
+ 
+diff --git a/test/dune b/test/dune
+index 3c1d1d5..81c9e37 100644
+--- a/test/dune
++++ b/test/dune
+@@ -1,2 +1,2 @@
+ (test
+- (name gsl-test))
++ (name gsl_test))
+diff --git a/test/vim_merlin_test.ml b/test/vim_merlin_test.ml
+deleted file mode 100644
+index e69de29..0000000

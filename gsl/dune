@@ -1,6 +1,6 @@
 (library
   (name gsl)
-  (public_name gsl)
+  (public_name ocaml-gsl-demo.gsl)
   (libraries
     core_kernel
   )
