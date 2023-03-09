@@ -1,7 +1,7 @@
 open! Core
 open! Lwt.Syntax
 open! Lwt.Infix
-open! Gsl
+open! Asemio_stats
 
 let main =
   Lwt_main.run @@

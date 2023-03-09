@@ -1,13 +1,13 @@
 (library
-  (name gsl)
-  (public_name ocaml-gsl-demo.gsl)
+  (name asemio_stats)
+  (public_name asemio_stats)
   (libraries
     core_kernel
   )
  (inline_tests)
   (preprocess (pps ppx_jane ppx_profile))
-  (foreign_stubs (language c) (names gsl)
+  (foreign_stubs (language c) (names asemio_stats)
     (flags -I. -I/usr/include/gsl -I/usr/local/include/gsl))
   (c_library_flags (-lgsl))
-  (install_c_headers gsl)
+  ; (install_c_headers gsl)
 )

@@ -16,7 +16,7 @@ The generated binary will call GSL to compute an integral and a linear regressor
 Initializing the Build Environment
 ----------------------------------
 
-```
+```bash
 opam switch create . ocaml-variants.4.10.0+flambda --no-install
 opam update
 opam install --deps-only .
@@ -24,11 +24,18 @@ dune build
 dune exec bin/main.exe
 ```
 
-PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/Cellar/openblas/0.3.20/lib/pkgconfig/ opam reinstall conf-openblas
+Additional MacOS Installation Instructions
+------------------------------------------
+
+If you get the following error message: `symbol not found in flat namespace '_cblas_caxpy', reinstall conf-openblas while passing `pkgconfig` the correct install path:
+
+```bash
+PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/Cellar/openblas/0.3.21/lib/pkgconfig opam reinstall conf-openblas
+```
 
 Running Unit Tests
 ------------------
 
-```
+```bash
 dune runtest
 ```

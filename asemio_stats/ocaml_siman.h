@@ -8,6 +8,7 @@
 #include <caml/mlvalues.h>
 #include <caml/memory.h> // CAMLreturn
 #include <caml/alloc.h> // caml_copy
+#include <caml/signals.h> // control the runtime
 
 #include <gsl_errno.h>
 #include <gsl_math.h> // log1p
@@ -123,13 +124,18 @@ CAMLprim value ocaml_siman_solve (value args){
     .t_min = 2.0e-6 // minimum temperature
   };
 
+  gsl_siman_print_t printer = NULL;
+//   if (Is_some (print)) {
+//      printer = (gsl_siman_print_t) ocaml_siman_print;
+//   }
+
   gsl_siman_solve (
     rng,
     &obj,
     (gsl_siman_Efunc_t) ocaml_siman_energy,
     (gsl_siman_step_t) ocaml_siman_step,
     (gsl_siman_metric_t) ocaml_siman_dist,
-    Is_some (print) ? (gsl_siman_print_t) ocaml_siman_print : NULL,
+    printer,
     (gsl_siman_copy_t) ocaml_siman_copy_into,
     (gsl_siman_copy_construct_t) ocaml_siman_copy,
     (gsl_siman_destroy_t) ocaml_siman_destroy,

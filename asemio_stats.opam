@@ -7,10 +7,13 @@ authors: [
 license: "GPLv3"
 homepage: "https://github.com/llee454/ocaml-gsl-demo"
 bug-reports: "https://github.com/llee454/ocaml-gsl-demo/issues"
+pin-depends: [
+ ["ppx_profile.1.0.0" "git+https://github.com/llee454/ppx_profile.git#main"]
+]
 depends: [
   "ocaml"
   "dune"
-  "core" 
+  "core"
   "core_kernel"
   "ppx_jane"
   "lwt"

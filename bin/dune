@@ -5,7 +5,7 @@
     core_kernel
     lwt
     lwt.unix
-    gsl
+    asemio_stats
   )
   (preprocess (pps
     ppx_jane))
