@@ -51,6 +51,43 @@ let%expect_test "fact_3" =
   [%expect {|120.0|}]
 
 external gamma : float -> float = "ocaml_gsl_sf_gamma"
+
+let vector_inner_product (x : float array) (y : float array) =
+  Array.fold2_exn x y ~init:0.0 ~f:(fun acc x0 y0 -> acc +. (x0 *. y0))
+
+let%expect_test "vector_inner_product_1" =
+  printf "%.2f" (vector_inner_product [|3.5; 2.0; 1.7|] [|4.0; 1.0; 2.8|]);
+  [%expect {|20.76|}]
+
+let%expect_test "vector_inner_product_2" =
+  printf "%.1f" (vector_inner_product [|3.5|] [|-4.0|]);
+  [%expect {|-14.0|}]
+
+let vector_norm x = sqrt (vector_inner_product x x)
+
+let%expect_test "vector_norm_1" =
+  printf "%.1f" (vector_norm [|1.0; 0.0; 0.0|]);
+  [%expect {|1.0|}]
+
+let%expect_test "vector_norm_2" =
+  printf "%.1f" (vector_norm [|-1.0 /. sqrt (2.0); 1.0 /. sqrt (2.0)|]);
+  [%expect {|1.0|}]
+
+let%expect_test "vector_norm_3" =
+  printf "%.1f" (vector_norm [|-3.0 /. sqrt (2.0); 3.0 /. sqrt (2.0)|]);
+  [%expect {|3.0|}]
+
+let vector_matrix_mult (m : float array array) (x : float array) =
+  let nrows = Array.length m in
+  if [%equal: int] nrows 0
+  then [||]
+  else Array.init nrows ~f:(fun r -> vector_inner_product m.(r) x)
+
+let%expect_test "vector_matrix_mult" =
+  let x = vector_matrix_mult [| [|3.5; 2.0; 1.7|]; [|4.0; 1.0; 2.8|] |] [| -3.4; 1.8; 5.0 |] in
+  printf !"%.2f %.2f" x.(0) x.(1);
+  [%expect {|0.20 2.20|}]
+
 external matrix_mult : float array array -> float array array -> float array array = "ocaml_matrix_mult"
 
 let%expect_test "matrix_mult_1" =
