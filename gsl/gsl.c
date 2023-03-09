@@ -307,7 +307,7 @@ CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
   CAMLlocal1 (result);
   double out;
   double err;
-  size_t limit = 10;
+  size_t limit = 100;
 
   struct callback_params* params = malloc (sizeof (struct callback_params));
   params->h = f;
@@ -332,12 +332,50 @@ CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
   CAMLreturn (result);
 }
 
+CAMLprim value ocaml_integration_qagp (value f, value lower, value upper, value singularities) {
+  CAMLparam4 (f, lower, upper, singularities);
+  CAMLlocal1 (result);
+  double out;
+  double err;
+  size_t limit = 100;
+
+  struct callback_params* params = malloc (sizeof (struct callback_params));
+  params->h = f;
+  caml_register_global_root (&params->h);
+
+  gsl_function* F = malloc (sizeof (gsl_function));
+  F->function = &callback;
+  F->params   = params;
+
+  size_t n = Wosize_val (singularities) + 2;
+  double* ps = malloc (n * sizeof (double));
+  ps [0] = Double_val (lower);
+  ps [n - 1] = Double_val (upper);
+  for (size_t i = 1; i < n - 1; i ++) {
+    ps [i] = Double_field (singularities, i);
+  }
+  gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
+  int status =  gsl_integration_qagp (F, ps, n, 0.0001, 0, limit, w, &out, &err);
+  gsl_integration_workspace_free (w);
+  result = caml_alloc (3, 0);
+  Store_field (result, 0, caml_copy_double (out));
+  Store_field (result, 1, caml_copy_double (err));
+  Store_field (result, 2, Val_long (0));
+
+  caml_remove_global_root (&params->h);
+  free (params);
+  free (F);
+  free (ps);
+
+  CAMLreturn (result);
+}
+
 CAMLprim value ocaml_integration_qagi (value f) {
   CAMLparam1 (f);
   CAMLlocal1 (result);
   double out;
   double err;
-  size_t limit = 10;
+  size_t limit = 100;
   struct callback_params params = {
     .h = f
   };
