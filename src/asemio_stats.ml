@@ -52,6 +52,10 @@ let%expect_test "fact_3" =
 
 external gamma : float -> float = "ocaml_gsl_sf_gamma"
 
+let vector_add = Array.map2_exn ~f:(+.)
+
+let vector_sub = Array.map2_exn ~f:(-.)
+
 let vector_inner_product (x : float array) (y : float array) =
   Array.fold2_exn x y ~init:0.0 ~f:(fun acc x0 y0 -> acc +. (x0 *. y0))
 
