@@ -52,6 +52,8 @@ let%expect_test "fact_3" =
 
 external gamma : float -> float = "ocaml_gsl_sf_gamma"
 
+let vector_scalar_mult x = Array.map ~f:(( *. ) x)
+
 let vector_add = Array.map2_exn ~f:(+.)
 
 let vector_sub = Array.map2_exn ~f:(-.)
