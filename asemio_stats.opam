@@ -17,7 +17,6 @@ depends: [
   "ppx_jane"
   "lwt"
   "lwt_ppx"
-  "merlin"
   "ppx_profile" { = "1.0.0" }
   "conf-gsl"
 ]
