@@ -52,6 +52,10 @@ let%expect_test "fact_3" =
 
 external gamma : float -> float = "ocaml_gsl_sf_gamma"
 
+type vector = float array [@@deriving compare, equal, sexp]
+
+type matrix = float array array [@@deriving compare, equal, sexp]
+
 let vector_scalar_mult x = Array.map ~f:(( *. ) x)
 
 let vector_add = Array.map2_exn ~f:(+.)
@@ -91,6 +95,27 @@ let vector_matrix_mult (m : float array array) (x : float array) =
 
 let%expect_test "vector_matrix_mult" =
   let x = vector_matrix_mult [| [|3.5; 2.0; 1.7|]; [|4.0; 1.0; 2.8|] |] [| -3.4; 1.8; 5.0 |] in
+  printf !"%.2f %.2f" x.(0) x.(1);
+  [%expect {|0.20 2.20|}]
+
+(**
+  Accepts three arguments: a matrix, a column vector, and a result
+  matrix; left multiplies m and x; and writes the result into the
+  result matrix.
+
+  Note: this function operates in constant memory and does not make
+  any memory allocations.
+*)
+let vector_matrix_mult_cm (m : float array array) (x : float array) (res : float array) =
+  let nrows = Array.length m in
+  if not @@ [%equal: int] nrows 0
+  then for i = 0 to nrows - 1 do
+    Array.set res i (vector_inner_product m.(i) x)
+  done;
+  res
+
+let%expect_test "vector_matrix_mult_w" =
+  let x = vector_matrix_mult_cm [| [|3.5; 2.0; 1.7|]; [|4.0; 1.0; 2.8|] |] [| -3.4; 1.8; 5.0 |] (Array.create ~len:2 0.0) in
   printf !"%.2f %.2f" x.(0) x.(1);
   [%expect {|0.20 2.20|}]
 
