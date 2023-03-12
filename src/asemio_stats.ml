@@ -102,6 +102,13 @@ let%expect_test "matrix_mult_1" =
   matrix_mult m1 m2 |> printf !"%{sexp: float array array}";
   [%expect {|((34 38) (100 112))|}]
 
+external matrix_inv : float array array -> float array array = "ocaml_gsl_matrix_inv"
+
+let%expect_test "matrix_inv_1" =
+  let m = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
+  matrix_inv m |> printf !"%{sexp: float array array}";
+  [%expect {| ((-4.5 3.5) (4 -3)) |}]
+
 let matrix_transpose (xs : float array array) : float array array =
   let nrows = Array.length xs in
   if [%equal: int] nrows 0

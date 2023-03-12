@@ -22,6 +22,7 @@
 #include <gsl_randist.h> // gsl_ran_binomial_pdf
 #include <gsl_eigen.h> // gsl_eigen_symmv
 #include <gsl_blas.h> // gsl_blas_dgemm
+#include <gsl_linalg.h>
 
 #include <ocaml_siman.h>
 #include <ocaml_nonlinear_fit.h>
@@ -114,6 +115,45 @@ CAMLprim value ocaml_matrix_mult (value xs, value ys) {
   gsl_matrix_free (x);
   gsl_matrix_free (y);
   gsl_matrix_free (z);
+  CAMLreturn (result);
+}
+
+CAMLprim value ocaml_gsl_matrix_inv (value xs) {
+  CAMLparam1 (xs);
+  CAMLlocal2 (result, result_row);
+
+  const size_t nrows = Wosize_val (xs);
+  const size_t ncols = nrows > 0 ? Wosize_val (Field (xs, 0)) : 0;
+  if (nrows != ncols) {
+    GSL_ERROR("[ocaml_gsl_matrix_inv] the given matrix is not invertable.", GSL_EINVAL);
+  }
+
+  gsl_matrix* x = gsl_matrix_alloc (nrows, ncols);
+  for (size_t i = 0; i < nrows; i ++) {
+    for (size_t j = 0; j < ncols; j ++) {
+      gsl_matrix_set (x, i, j, Double_field (Field (xs, i), j));
+    }
+  }
+
+  int* signum = malloc (nrows * sizeof (int));
+
+  gsl_permutation* perm = gsl_permutation_alloc (nrows);
+  gsl_linalg_LU_decomp (x, perm, signum);
+  free (signum);
+
+  gsl_matrix* inv = gsl_matrix_alloc (nrows, ncols);
+  gsl_linalg_LU_invert (x, perm, inv);
+
+  result = caml_alloc (nrows, 0);
+  for (size_t i = 0; i < nrows; i ++) {
+    result_row = caml_alloc (ncols, Double_array_tag);
+    for (size_t j = 0; j < ncols; j ++) {
+      Store_double_field (result_row, j, gsl_matrix_get (inv, i, j));
+    }
+    Store_field (result, i, result_row);
+  }
+  gsl_matrix_free (x);
+  gsl_permutation_free (perm);
   CAMLreturn (result);
 }
 
