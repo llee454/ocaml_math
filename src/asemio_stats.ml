@@ -119,6 +119,15 @@ let%expect_test "vector_matrix_mult_w" =
   printf !"%.2f %.2f" x.(0) x.(1);
   [%expect {|0.20 2.20|}]
 
+(** Accepts two matrices and adds them together. *)
+let matrix_add = Array.map2_exn ~f:(vector_add)
+
+let%expect_test "matrix_add" =
+  let m1 = [| [| 1.0; 1.0 |]; [| 3.0; 4.0 |] |] in
+  let m2 = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
+  matrix_add m1 m2 |> printf !"%{sexp: float array array}";
+  [%expect {| ((7 8) (11 13)) |}]
+
 external matrix_mult : float array array -> float array array -> float array array = "ocaml_matrix_mult"
 
 let%expect_test "matrix_mult_1" =
