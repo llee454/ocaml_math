@@ -157,6 +157,14 @@ let%expect_test "matrix_transpose_1" =
   matrix_transpose xs |> printf !"%{sexp: float array array}";
   [%expect {|((1 3) (1 4) (2 5))|}]
 
+(** Accepts a two by two matrix and returns its determinant *)
+let matrix_22_det (m : float array array) =
+  Float.((m.(0).(0) * m.(1).(1)) - (m.(0).(1) * m.(1).(0)))
+
+let%expect_test "matrix_22_det_0" =
+  matrix_22_det [| [| 3.0; 7.0|]; [| 1.0; -4.0 |] |] |> printf !"%{sexp: float}";
+  [%expect {| -19 |}]
+
 external mean : float array -> float = "ocaml_mean"
 
 let%expect_test "mean_1" =
