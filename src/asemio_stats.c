@@ -153,6 +153,7 @@ CAMLprim value ocaml_gsl_matrix_inv (value xs) {
     Store_field (result, i, result_row);
   }
   gsl_matrix_free (x);
+  gsl_matrix_free (inv);
   gsl_permutation_free (perm);
   CAMLreturn (result);
 }
