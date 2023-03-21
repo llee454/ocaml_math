@@ -136,13 +136,6 @@ let%expect_test "matrix_mult_1" =
   matrix_mult m1 m2 |> printf !"%{sexp: float array array}";
   [%expect {|((34 38) (100 112))|}]
 
-external matrix_inv : float array array -> float array array = "ocaml_gsl_matrix_inv"
-
-let%expect_test "matrix_inv_1" =
-  let m = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
-  matrix_inv m |> printf !"%{sexp: float array array}";
-  [%expect {| ((-4.5 3.5) (4 -3)) |}]
-
 let matrix_transpose (xs : float array array) : float array array =
   let nrows = Array.length xs in
   if [%equal: int] nrows 0
@@ -164,6 +157,29 @@ let matrix_22_det (m : float array array) =
 let%expect_test "matrix_22_det_0" =
   matrix_22_det [| [| 3.0; 7.0|]; [| 1.0; -4.0 |] |] |> printf !"%{sexp: float}";
   [%expect {| -19 |}]
+
+external matrix_inv : float array array -> float array array = "ocaml_gsl_matrix_inv"
+
+let%expect_test "matrix_inv_1" =
+  let m = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
+  matrix_inv m |> printf !"%{sexp: float array array}";
+  [%expect {| ((-4.5 3.5) (4 -3)) |}]
+
+(** An optimized function to invert 2x2 matrices *)
+let matrix_22_inv m =
+  let open Float in
+  let det = matrix_22_det m in
+  let res = Array.make_matrix ~dimx:2 ~dimy:2 0.0 in
+  res.(0).(0) <- m.(1).(1)/det;
+  res.(0).(1) <- - m.(0).(1)/det;
+  res.(1).(0) <- - m.(1).(0)/det;
+  res.(1).(1) <- m.(0).(0)/det;
+  res
+
+let%expect_test "matrix_22_inv_1" =
+  let m = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
+  matrix_22_inv m |> printf !"%{sexp: float array array}";
+  [%expect {| ((-4.5 3.5) (4 -3)) |}]
 
 external mean : float array -> float = "ocaml_mean"
 
