@@ -12,8 +12,8 @@
 (rule
   (targets libgslcblas.a libgsl.a dllgsl.so dllgslcblas.so)
   (action (bash "
-    (cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a .) \
-    && (cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a .) \
+    (cp /usr/lib/x86_64-linux-gnu/libgslcblas.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a .) \
+    && (cp /usr/lib/x86_64-linux-gnu/libgsl.a . || cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a .) \
     && touch dllgsl.so dllgslcblas.so # CAN I BE FREE OF THIS???
   "))
   (mode standard)
