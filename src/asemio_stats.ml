@@ -259,6 +259,12 @@ let%expect_test "pdf_binomial_1" =
   printf "%.4f" (pdf_binomial ~k:5 ~p:0.5 ~n:10);
   [%expect {|0.2461|}]
 
+external cdf_binomial : k:int -> p:float -> n:int -> float = "ocaml_gsl_cdf_binomial_cdf"
+
+let%expect_test "cdf_binomial_1" =
+  printf "%0.4f" (cdf_binomial ~k:5 ~p:0.5 ~n:10);
+  [%expect {| 0.6230 |}]
+
 external pdf_gamma : a:float -> b:float -> float -> float = "ocaml_gsl_ran_gamma_pdf"
 external covariance : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_covariance"
 

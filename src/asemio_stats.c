@@ -191,6 +191,14 @@ CAMLprim value ocaml_gsl_ran_binomial_pdf (value k, value p, value n) {
     (unsigned int) (Int_val (n)))));
 }
 
+CAMLprim value ocaml_gsl_cdf_binomial_cdf (value k, value p, value n) {
+  CAMLparam3 (k, p, n);
+  CAMLreturn (caml_copy_double (gsl_cdf_binomial_P (
+    (unsigned int) (Int_val (k)),
+    Double_val (p),
+    (unsigned int) (Int_val (n)))));
+}
+
 CAMLprim value ocaml_gsl_ran_gamma_pdf (value a, value b, value x) {
   CAMLparam3 (a, b, x);
    CAMLreturn (caml_copy_double (gsl_ran_gamma_pdf (
