@@ -271,10 +271,13 @@ let%expect_test "cdf_binomial_1" =
   the binomial confidence interval.
 *)
 let binomial_conf_interval ~alpha ~n ~p =
+  match p with
+  | _ when [%equal: float] p 0.0 -> 0, 0
+  | _ when [%equal: float] p 1.0 -> n, n
+  | _ ->
   let lower =
-    Binary_search.binary_search ~pos:0
-      ~len:(Float.iround_up_exn (float n *. p))
-      () ~length:(Fn.const n)
+    Binary_search.binary_search
+      () ~length:(Fn.const (n + 1))
       ~get:(fun () k -> cdf_binomial ~k ~p ~n)
       ~compare:[%compare: float] `Last_less_than_or_equal_to (alpha /. 2.0)
     |> Option.value_exn ~here:[%here]
@@ -282,7 +285,7 @@ let binomial_conf_interval ~alpha ~n ~p =
   let upper =
     Binary_search.binary_search
       ~pos:(Float.iround_down_exn (float n *. p))
-      () ~length:(Fn.const n)
+      () ~length:(Fn.const (n + 1))
       ~get:(fun () k -> cdf_binomial ~k ~p ~n)
       ~compare:[%compare: float] `First_greater_than_or_equal_to (1.0 -. (alpha /. 2.0))
     |> Option.value_exn ~here:[%here]
@@ -290,9 +293,13 @@ let binomial_conf_interval ~alpha ~n ~p =
   lower, upper
 
 let%expect_test "binomial_conf_interval" =
-  binomial_conf_interval ~alpha:0.05 ~n:10 ~p:0.5
-  |> printf !"%{sexp: int * int}";
-  [%expect {| (1 8) |}]
+  [|
+    binomial_conf_interval ~alpha:0.05 ~n:10 ~p:0.5;
+    binomial_conf_interval ~alpha:0.05 ~n:10 ~p:0.0;
+    binomial_conf_interval ~alpha:0.05 ~n:10 ~p:1.0;
+  |]
+  |> printf !"%{sexp: (int * int) array}";
+  [%expect {| ((1 8) (0 0) (10 10)) |}]
 
 
 external pdf_gamma : a:float -> b:float -> float -> float = "ocaml_gsl_ran_gamma_pdf"
