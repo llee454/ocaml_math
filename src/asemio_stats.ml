@@ -265,6 +265,36 @@ let%expect_test "cdf_binomial_1" =
   printf "%0.4f" (cdf_binomial ~k:5 ~p:0.5 ~n:10);
   [%expect {| 0.6230 |}]
 
+(**
+  Accepts a confidence level, alpha, the number of possible instances,
+  n, and the probability of each event, p. This function returns the
+  the binomial confidence interval.
+*)
+let binomial_conf_interval ~alpha ~n ~p =
+  let lower =
+    Binary_search.binary_search ~pos:0
+      ~len:(Float.iround_up_exn (float n *. p))
+      () ~length:(Fn.const n)
+      ~get:(fun () k -> cdf_binomial ~k ~p ~n)
+      ~compare:[%compare: float] `Last_less_than_or_equal_to (alpha /. 2.0)
+    |> Option.value_exn ~here:[%here]
+  in
+  let upper =
+    Binary_search.binary_search
+      ~pos:(Float.iround_down_exn (float n *. p))
+      () ~length:(Fn.const n)
+      ~get:(fun () k -> cdf_binomial ~k ~p ~n)
+      ~compare:[%compare: float] `First_greater_than_or_equal_to (1.0 -. (alpha /. 2.0))
+    |> Option.value_exn ~here:[%here]
+  in
+  lower, upper
+
+let%expect_test "binomial_conf_interval" =
+  binomial_conf_interval ~alpha:0.05 ~n:10 ~p:0.5
+  |> printf !"%{sexp: int * int}";
+  [%expect {| (1 8) |}]
+
+
 external pdf_gamma : a:float -> b:float -> float -> float = "ocaml_gsl_ran_gamma_pdf"
 external covariance : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_covariance"
 
