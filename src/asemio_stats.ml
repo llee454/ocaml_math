@@ -280,7 +280,7 @@ let binomial_conf_interval ~alpha ~n ~p =
       () ~length:(Fn.const (n + 1))
       ~get:(fun () k -> cdf_binomial ~k ~p ~n)
       ~compare:[%compare: float] `Last_less_than_or_equal_to (alpha /. 2.0)
-    |> Option.value_exn ~here:[%here]
+    |> Option.value ~default:0
   in
   let upper =
     Binary_search.binary_search
@@ -297,9 +297,10 @@ let%expect_test "binomial_conf_interval" =
     binomial_conf_interval ~alpha:0.05 ~n:10 ~p:0.5;
     binomial_conf_interval ~alpha:0.05 ~n:10 ~p:0.0;
     binomial_conf_interval ~alpha:0.05 ~n:10 ~p:1.0;
+    binomial_conf_interval ~alpha:0.05 ~n:3832 ~p:0.0003;
   |]
   |> printf !"%{sexp: (int * int) array}";
-  [%expect {| ((1 8) (0 0) (10 10)) |}]
+  [%expect {| ((1 8) (0 0) (10 10) (0 4)) |}]
 
 
 external pdf_gamma : a:float -> b:float -> float -> float = "ocaml_gsl_ran_gamma_pdf"
