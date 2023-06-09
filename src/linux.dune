@@ -1,21 +1,20 @@
-
 (library
   (name asemio_stats)
   (public_name asemio_stats)
   (libraries core)
   (inline_tests)
   (preprocess (pps ppx_jane ppx_profile))
-  (foreign_stubs (language c) (names asemio_stats)
-    (flags -I. -I/usr/include/gsl -I/usr/local/include/gsl))
-  (c_library_flags -lgsl -lgslcblas)
+  (foreign_stubs (language c) (names asemio_stats siman)
+    (flags -I. -I/usr/local/Cellar/gsl/2.7.1/include/gsl))
+  (foreign_archives gslcblas gsl)
 )
 
 (rule
-  (targets dllgsl.so dllgslcblas.so)
-  (action
-    (bash "
-      (cp /usr/lib/x86_64-linux-gnu/libgsl.so dllgsl.so) \
-      (cp /usr/lib/x86_64-linux-gnu/libgslcblas.so dllgslcblas.so)
-    "))
+  (targets libgslcblas.a libgsl.a dllgsl.so dllgslcblas.so)
+  (action (bash "
+    cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a . \
+    && cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a . \
+    && touch dllgsl.so dllgslcblas.so
+  "))
   (mode standard)
 )

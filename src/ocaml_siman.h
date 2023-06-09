@@ -21,24 +21,18 @@
 #include <gsl_sf_gamma.h> // gsl_sf_fact
 #include <gsl_randist.h> // gsl_ran_binomial_pdf
 
-#include <gsl_siman.h> // simulated annealing
+#include <siman.h> // simulated annealing
 #include <gsl_rng.h> // random number generator
 
-struct ocaml_siman_callbacks {
-  value copy;
-  value energy;
-  value step;
-  value dist;
-  value print;
-};
-
 struct ocaml_siman_object {
-  struct ocaml_siman_callbacks* callbacks;
   value state;
 };
 
 double ocaml_siman_energy (struct ocaml_siman_object* xp) {
-  return Double_val (caml_callback (xp->callbacks->energy, xp->state));
+  CAMLparam0 ();
+  CAMLlocal1 (energy);
+  energy = Field (Field (xp->state, 0), 1);
+  CAMLreturnT (double, Double_val (caml_callback (energy, xp->state)));
 }
 
 void ocaml_siman_step (
@@ -46,77 +40,80 @@ void ocaml_siman_step (
   struct ocaml_siman_object* xp,
   double step_size
 ) {
-  caml_callback2 (xp->callbacks->step, xp->state, caml_copy_double (step_size));
+  CAMLparam0 ();
+  CAMLlocal2 (step, res);
+  step = Field (Field (xp->state, 0), 2);
+  res = caml_callback2 (step, xp->state, caml_copy_double (step_size));
+  xp->state = res;
+  CAMLreturn0;
 }
 
 double ocaml_siman_dist (
   struct ocaml_siman_object* xp,
   struct ocaml_siman_object* yp
 ) {
-  return Double_val (caml_callback2 (xp->callbacks->dist, xp->state, yp->state));
+  CAMLparam0 ();
+  CAMLlocal1 (dist);
+  dist = Field (Field (xp->state, 0), 3);
+  CAMLreturnT (double, Double_val (caml_callback2 (dist, xp->state, yp->state)));
 }
 
 void ocaml_siman_copy_into (
-  struct ocaml_siman_object* src,
-  struct ocaml_siman_object* dst
+  struct ocaml_siman_object* xp,
+  struct ocaml_siman_object* yp
 ) {
-  dst->callbacks = src->callbacks;
-  dst->state = caml_callback (src->callbacks->copy, src->state);
-  caml_register_global_root (&(dst->state));
+  CAMLparam0 ();
+  CAMLlocal3 (src, dst, copy);
+  src = xp->state;
+  copy = Field (Field (src, 0), 0);
+  dst = caml_callback (copy, src);
+  yp->state = dst;
+  CAMLreturn0;
 }
 
-void* ocaml_siman_copy (struct ocaml_siman_object* src) {
-  struct ocaml_siman_object* dst = malloc (sizeof (struct ocaml_siman_object));
-  ocaml_siman_copy_into (src, dst);
-  return dst;
+void* ocaml_siman_copy (struct ocaml_siman_object* xp) {
+  CAMLparam0 ();
+  CAMLlocal3 (src, copy, dst);
+  src = xp->state;
+  copy = Field (Field (src, 0), 0);
+  dst = caml_callback (copy, src);
+  struct ocaml_siman_object* yp = malloc (sizeof (struct ocaml_siman_object));
+  yp->state = dst;
+  caml_register_global_root (&(yp->state));
+  CAMLreturnT (struct ocaml_siman_object*, yp);
 }
 
 void ocaml_siman_destroy (struct ocaml_siman_object* xp) {
+  CAMLparam0 ();
   caml_remove_global_root (&(xp->state));
   free (xp);
+  CAMLreturn0;
 }
 
 void ocaml_siman_print (struct ocaml_siman_object* xp) {
-  caml_callback (Field (xp->callbacks->print, 0), xp->state);
+  CAMLparam0 ();
+  CAMLlocal1 (print);
+  print = Field (Field (xp->state, 0), 4);
+  if (Is_some (print)) {
+    caml_callback (Field (print, 0), xp->state);
+  }
+  CAMLreturn0;
 }
 
-CAMLprim value ocaml_siman_solve (value args){
-  CAMLparam1 (args);
-  CAMLlocal5 (copy, energy, step, dist, init);
-  CAMLlocal2 (print, res);
+CAMLprim value ocaml_siman_solve (value state){
+  CAMLparam1 (state);
+  CAMLlocal1 (res);
 
-  copy = Field (args, 0);
-  energy = Field (args, 1);
-  step = Field (args, 2);
-  dist = Field (args, 3);
-  init = Field (args, 4);
-  print = Field (args, 5);
-
-  struct ocaml_siman_callbacks callbacks = {
-    .copy   = copy,
-    .energy = energy,
-    .step   = step,
-    .dist   = dist,
-    .print  = print
-  };
-  caml_register_global_root (&callbacks.copy);
-  caml_register_global_root (&callbacks.energy);
-  caml_register_global_root (&callbacks.step);
-  caml_register_global_root (&callbacks.dist);
-  caml_register_global_root (&callbacks.print);
-
-  struct ocaml_siman_object obj = {
-    .callbacks = &callbacks,
-    .state     = init
-  };
-  caml_register_global_root (&obj.state);
+  struct ocaml_siman_object* xp = malloc (sizeof (struct ocaml_siman_object));
+  xp->state = state;
+  caml_register_global_root (&(xp->state));
 
   gsl_rng_env_setup ();
   gsl_rng* rng = gsl_rng_alloc (gsl_rng_default);
 
   gsl_siman_params_t params = {
     .n_tries = 200, // 200
-    .iters_fixed_T = 1000, // 1000
+    .iters_fixed_T = 10, // 1000
     .step_size = 1,
     .k = 1.0, // Boltzman constant
     .t_initial = 0.008, // initial temperature
@@ -125,13 +122,14 @@ CAMLprim value ocaml_siman_solve (value args){
   };
 
   gsl_siman_print_t printer = NULL;
-  if (Is_some (print)) {
-     printer = (gsl_siman_print_t) ocaml_siman_print;
+/*
+  if (Is_some (Field (Field (xp->state, 0), 4))) {
+    printer = (gsl_siman_print_t) ocaml_siman_print;
   }
-
-  gsl_siman_solve (
+*/
+  siman_solve (
     rng,
-    &obj,
+    (void*) xp,
     (gsl_siman_Efunc_t) ocaml_siman_energy,
     (gsl_siman_step_t) ocaml_siman_step,
     (gsl_siman_metric_t) ocaml_siman_dist,
@@ -142,16 +140,11 @@ CAMLprim value ocaml_siman_solve (value args){
     0, // element size - signal variable.
     params
   );
-
-  res = obj.state;
-
   gsl_rng_free (rng);
-  caml_remove_global_root (&callbacks.copy);
-  caml_remove_global_root (&callbacks.energy);
-  caml_remove_global_root (&callbacks.step);
-  caml_remove_global_root (&callbacks.dist);
-  caml_remove_global_root (&callbacks.print);
-  caml_remove_global_root (&obj.state);
+
+  res = Field (xp->state, 1);
+  caml_remove_global_root (&(xp->state));
+  free (xp);
 
   CAMLreturn (res);
 }

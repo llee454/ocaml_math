@@ -53,48 +53,43 @@ let%expect_test "fact_3" =
 external gamma : float -> float = "ocaml_gsl_sf_gamma"
 
 type vector = float array [@@deriving compare, equal, sexp]
-
 type matrix = float array array [@@deriving compare, equal, sexp]
 
 let vector_scalar_mult x = Array.map ~f:(( *. ) x)
-
-let vector_add = Array.map2_exn ~f:(+.)
-
-let vector_sub = Array.map2_exn ~f:(-.)
+let vector_add = Array.map2_exn ~f:( +. )
+let vector_sub = Array.map2_exn ~f:( -. )
 
 let vector_inner_product (x : float array) (y : float array) =
   Array.fold2_exn x y ~init:0.0 ~f:(fun acc x0 y0 -> acc +. (x0 *. y0))
 
 let%expect_test "vector_inner_product_1" =
-  printf "%.2f" (vector_inner_product [|3.5; 2.0; 1.7|] [|4.0; 1.0; 2.8|]);
+  printf "%.2f" (vector_inner_product [| 3.5; 2.0; 1.7 |] [| 4.0; 1.0; 2.8 |]);
   [%expect {|20.76|}]
 
 let%expect_test "vector_inner_product_2" =
-  printf "%.1f" (vector_inner_product [|3.5|] [|-4.0|]);
+  printf "%.1f" (vector_inner_product [| 3.5 |] [| -4.0 |]);
   [%expect {|-14.0|}]
 
 let vector_norm x = sqrt (vector_inner_product x x)
 
 let%expect_test "vector_norm_1" =
-  printf "%.1f" (vector_norm [|1.0; 0.0; 0.0|]);
+  printf "%.1f" (vector_norm [| 1.0; 0.0; 0.0 |]);
   [%expect {|1.0|}]
 
 let%expect_test "vector_norm_2" =
-  printf "%.1f" (vector_norm [|-1.0 /. sqrt (2.0); 1.0 /. sqrt (2.0)|]);
+  printf "%.1f" (vector_norm [| -1.0 /. sqrt 2.0; 1.0 /. sqrt 2.0 |]);
   [%expect {|1.0|}]
 
 let%expect_test "vector_norm_3" =
-  printf "%.1f" (vector_norm [|-3.0 /. sqrt (2.0); 3.0 /. sqrt (2.0)|]);
+  printf "%.1f" (vector_norm [| -3.0 /. sqrt 2.0; 3.0 /. sqrt 2.0 |]);
   [%expect {|3.0|}]
 
 let vector_matrix_mult (m : float array array) (x : float array) =
   let nrows = Array.length m in
-  if [%equal: int] nrows 0
-  then [||]
-  else Array.init nrows ~f:(fun r -> vector_inner_product m.(r) x)
+  if [%equal: int] nrows 0 then [||] else Array.init nrows ~f:(fun r -> vector_inner_product m.(r) x)
 
 let%expect_test "vector_matrix_mult" =
-  let x = vector_matrix_mult [| [|3.5; 2.0; 1.7|]; [|4.0; 1.0; 2.8|] |] [| -3.4; 1.8; 5.0 |] in
+  let x = vector_matrix_mult [| [| 3.5; 2.0; 1.7 |]; [| 4.0; 1.0; 2.8 |] |] [| -3.4; 1.8; 5.0 |] in
   printf !"%.2f %.2f" x.(0) x.(1);
   [%expect {|0.20 2.20|}]
 
@@ -109,17 +104,17 @@ let%expect_test "vector_matrix_mult" =
 let vector_matrix_mult_cm (m : float array array) (x : float array) (res : float array) =
   let nrows = Array.length m in
   for i = 0 to nrows - 1 do
-    res.(i) <- (vector_inner_product m.(i) x)
+    res.(i) <- vector_inner_product m.(i) x
   done
 
 let%expect_test "vector_matrix_mult_cm" =
   let x = Array.create_float_uninitialized ~len:2 in
-  vector_matrix_mult_cm [| [|3.5; 2.0; 1.7|]; [|4.0; 1.0; 2.8|] |] [| -3.4; 1.8; 5.0 |] x;
+  vector_matrix_mult_cm [| [| 3.5; 2.0; 1.7 |]; [| 4.0; 1.0; 2.8 |] |] [| -3.4; 1.8; 5.0 |] x;
   printf !"%.2f %.2f" x.(0) x.(1);
   [%expect {|0.20 2.20|}]
 
 (** Accepts two matrices and adds them together. *)
-let matrix_add = Array.map2_exn ~f:(vector_add)
+let matrix_add = Array.map2_exn ~f:vector_add
 
 let%expect_test "matrix_add" =
   let m1 = [| [| 1.0; 1.0 |]; [| 3.0; 4.0 |] |] in
@@ -150,11 +145,10 @@ let%expect_test "matrix_transpose_1" =
   [%expect {|((1 3) (1 4) (2 5))|}]
 
 (** Accepts a two by two matrix and returns its determinant *)
-let matrix_22_det (m : float array array) =
-  Float.((m.(0).(0) * m.(1).(1)) - (m.(0).(1) * m.(1).(0)))
+let matrix_22_det (m : float array array) = Float.((m.(0).(0) * m.(1).(1)) - (m.(0).(1) * m.(1).(0)))
 
 let%expect_test "matrix_22_det_0" =
-  matrix_22_det [| [| 3.0; 7.0|]; [| 1.0; -4.0 |] |] |> printf !"%{sexp: float}";
+  matrix_22_det [| [| 3.0; 7.0 |]; [| 1.0; -4.0 |] |] |> printf !"%{sexp: float}";
   [%expect {| -19 |}]
 
 external matrix_inv : float array array -> float array array = "ocaml_gsl_matrix_inv"
@@ -169,10 +163,10 @@ let matrix_22_inv m =
   let open Float in
   let det = matrix_22_det m in
   let res = Array.make_matrix ~dimx:2 ~dimy:2 0.0 in
-  res.(0).(0) <- m.(1).(1)/det;
-  res.(0).(1) <- - m.(0).(1)/det;
-  res.(1).(0) <- - m.(1).(0)/det;
-  res.(1).(1) <- m.(0).(0)/det;
+  res.(0).(0) <- m.(1).(1) / det;
+  res.(0).(1) <- -m.(0).(1) / det;
+  res.(1).(0) <- -m.(1).(0) / det;
+  res.(1).(1) <- m.(0).(0) / det;
   res
 
 let%expect_test "matrix_22_inv_1" =
@@ -189,8 +183,8 @@ let%expect_test "mean_1" =
 external sample_variance : float array -> float = "ocaml_gsl_stats_variance"
 
 (* let%expect_test "sample_variance_1" =
-  printf "%.4f" (mean [| 0.3786; -1.204; 1.9441; -1.151; -1.184 |]);
-  [%expect {|1.9508|}] *)
+   printf "%.4f" (mean [| 0.3786; -1.204; 1.9441; -1.151; -1.184 |]);
+   [%expect {|1.9508|}] *)
 
 external pdf_normal : mean:float -> std:float -> float -> float = "ocaml_gsl_ran_gaussian_pdf"
 external cdf_gaussian_p : x:float -> std:float -> float = "ocaml_gsl_cdf_gaussian_P"
@@ -275,22 +269,24 @@ let binomial_conf_interval ~alpha ~n ~p =
   | _ when [%equal: float] p 0.0 -> 0, 0
   | _ when [%equal: float] p 1.0 -> n, n
   | _ ->
-  let lower =
-    Binary_search.binary_search
-      () ~length:(Fn.const (n + 1))
-      ~get:(fun () k -> cdf_binomial ~k ~p ~n)
-      ~compare:[%compare: float] `Last_less_than_or_equal_to (alpha /. 2.0)
-    |> Option.value ~default:0
-  in
-  let upper =
-    Binary_search.binary_search
-      ~pos:(Float.iround_down_exn (float n *. p))
-      () ~length:(Fn.const (n + 1))
-      ~get:(fun () k -> cdf_binomial ~k ~p ~n)
-      ~compare:[%compare: float] `First_greater_than_or_equal_to (1.0 -. (alpha /. 2.0))
-    |> Option.value_exn ~here:[%here]
-  in
-  lower, upper
+    let lower =
+      Binary_search.binary_search ()
+        ~length:(Fn.const (n + 1))
+        ~get:(fun () k -> cdf_binomial ~k ~p ~n)
+        ~compare:[%compare: float] `Last_less_than_or_equal_to (alpha /. 2.0)
+      |> Option.value ~default:0
+    in
+    let upper =
+      Binary_search.binary_search
+        ~pos:(Float.iround_down_exn (float n *. p))
+        ()
+        ~length:(Fn.const (n + 1))
+        ~get:(fun () k -> cdf_binomial ~k ~p ~n)
+        ~compare:[%compare: float] `First_greater_than_or_equal_to
+        (1.0 -. (alpha /. 2.0))
+      |> Option.value_exn ~here:[%here]
+    in
+    lower, upper
 
 let%expect_test "binomial_conf_interval" =
   [|
@@ -301,7 +297,6 @@ let%expect_test "binomial_conf_interval" =
   |]
   |> printf !"%{sexp: (int * int) array}";
   [%expect {| ((1 8) (0 0) (10 10) (0 4)) |}]
-
 
 external pdf_gamma : a:float -> b:float -> float -> float = "ocaml_gsl_ran_gamma_pdf"
 external covariance : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_covariance"
@@ -316,11 +311,11 @@ let%expect_test "covariance_1" =
 external correlation : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_correlation"
 
 (* let%expect_test "correlation_1" =
-  printf "%.4f"
-    (covariance ~xs:[| 0.0; 1.0; 2.0; 3.0; 4.0; 5.0 |]
-       ~ys:[| -1.351; -0.149; 5.299; 2.7622; 3.5947; 3.9727 |]
-    );
-  [%expect {|0.7348|}] *)
+   printf "%.4f"
+     (covariance ~xs:[| 0.0; 1.0; 2.0; 3.0; 4.0; 5.0 |]
+        ~ys:[| -1.351; -0.149; 5.299; 2.7622; 3.5947; 3.9727 |]
+     );
+   [%expect {|0.7348|}] *)
 
 let get_covariance_matrix (xs : float array array) : float array array =
   let n = Array.length xs in
@@ -433,11 +428,11 @@ module Integrate = struct
     printf "%.8f" out;
     [%expect {|2.12893404|}]
 
-  external integration_qagp : f:(float -> float) -> lower:float -> upper:float -> singularities:float array -> t
+  external integration_qagp :
+    f:(float -> float) -> lower:float -> upper:float -> singularities:float array -> t
     = "ocaml_integration_qagp"
 
   let qagp = integration_qagp
-
 end
 
 module Nonlinear_fit = struct
@@ -720,6 +715,16 @@ module Stats_tests = struct
 *)
 end
 
+module type Simulated_annealing_arg = sig
+  type t
+
+  val copy : t -> t
+  val energy : t -> float
+  val step : t -> float -> t
+  val dist : t -> t -> float
+  val print : (t -> unit) option
+end
+
 (**
   A demonstration of how to use the simulated annealing function.
 
@@ -756,17 +761,32 @@ end
     in
     !params
 *)
-module Simulated_annealing = struct
-  type 'a t = {
-    copy: 'a -> 'a;
-    energy: 'a -> float;
-    step: 'a -> float -> unit;
-    dist: 'a -> 'a -> float;
-    init: 'a;
-    print: ('a -> unit) option;
+module Simulated_annealing (M : Simulated_annealing_arg) = struct
+  type intf = {
+    copy: t -> t;
+    energy: t -> float;
+    step: t -> float -> t;
+    dist: t -> t -> float;
+    print: (t -> unit) option;
+    canary: float;
   }
 
-  external simulated_annealing : 'a t -> 'a = "ocaml_siman_solve"
+  and t = {
+    intf: intf;
+    value: M.t;
+    canary: float;
+  }
+
+  let copy (x : t) : t = { x with value = M.copy x.value }
+  let energy (x : t) : float = M.energy x.value
+  let step (x : t) (delta : float) : t = { x with value = M.step x.value delta }
+  let dist (x : t) (y : t) : float = M.dist x.value y.value
+  let print = Option.map M.print ~f:(fun f (x : t) : unit -> f x.value)
+
+  let create_state (value : M.t) : t =
+    { intf = { copy; energy; step; dist; print; canary = Float.pi }; value; canary = Float.euler }
+
+  external simulated_annealing : t -> M.t = "ocaml_siman_solve"
 
   let f = simulated_annealing
 end
