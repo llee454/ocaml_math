@@ -786,7 +786,7 @@ module Simulated_annealing (M : Simulated_annealing_arg) = struct
   let create_state (value : M.t) : t =
     { intf = { copy; energy; step; dist; print; canary = Float.pi }; value; canary = Float.euler }
 
-  external simulated_annealing : t -> M.t = "ocaml_siman_solve"
+  external simulated_annealing : num_iters:int -> step_size:float -> t -> M.t = "ocaml_siman_solve"
 
   let f = simulated_annealing
 end

@@ -100,8 +100,8 @@ void ocaml_siman_print (struct ocaml_siman_object* xp) {
   CAMLreturn0;
 }
 
-CAMLprim value ocaml_siman_solve (value state){
-  CAMLparam1 (state);
+CAMLprim value ocaml_siman_solve (value num_iters, value step_size, value state){
+  CAMLparam3 (num_iters, step_size, state);
   CAMLlocal1 (res);
 
   struct ocaml_siman_object* xp = malloc (sizeof (struct ocaml_siman_object));
@@ -113,8 +113,8 @@ CAMLprim value ocaml_siman_solve (value state){
 
   gsl_siman_params_t params = {
     .n_tries = 200, // 200
-    .iters_fixed_T = 10, // 1000
-    .step_size = 1,
+    .iters_fixed_T = Int_val (num_iters), // 1000
+    .step_size = Double_val (step_size), // 1
     .k = 1.0, // Boltzman constant
     .t_initial = 0.008, // initial temperature
     .mu_t = 1.003,

@@ -32,7 +32,7 @@ let main =
 
       let print = None (* Some (fun x -> print_endline @@ sprintf "state: %0.4f" x) *)
     end) in
-    SA.(f (create_state 5.0))
+    SA.(f ~num_iters:10 ~step_size:1.0 (create_state 5.0))
   in
   let* () = Lwt_io.printlf "simulated annealing result: %f" result in
   Lwt.return_unit
