@@ -60,7 +60,6 @@ siman_solve (const gsl_rng * r, void *x0_p, gsl_siman_Efunc_t Ef,
                  size_t element_size,
                  gsl_siman_params_t params)
 {
-  printf ("[gsl_siman_solve] using test version\n");
   void *x, *new_x, *best_x;
   double E, new_E, best_E;
   int i;
