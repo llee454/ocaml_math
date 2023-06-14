@@ -768,13 +768,11 @@ module Simulated_annealing (M : Simulated_annealing_arg) = struct
     step: t -> float -> t;
     dist: t -> t -> float;
     print: (t -> unit) option;
-    canary: float;
   }
 
   and t = {
     intf: intf;
     value: M.t;
-    canary: float;
   }
 
   let copy (x : t) : t = { x with value = M.copy x.value }
@@ -784,7 +782,7 @@ module Simulated_annealing (M : Simulated_annealing_arg) = struct
   let print = Option.map M.print ~f:(fun f (x : t) : unit -> f x.value)
 
   let create_state (value : M.t) : t =
-    { intf = { copy; energy; step; dist; print; canary = Float.pi }; value; canary = Float.euler }
+    { intf = { copy; energy; step; dist; print; }; value; }
 
   external simulated_annealing : num_iters:int -> step_size:float -> t -> M.t = "ocaml_siman_solve"
 

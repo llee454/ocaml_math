@@ -41,10 +41,9 @@ void ocaml_siman_step (
   double step_size
 ) {
   CAMLparam0 ();
-  CAMLlocal2 (step, res);
+  CAMLlocal1 (step);
   step = Field (Field (xp->state, 0), 2);
-  res = caml_callback2 (step, xp->state, caml_copy_double (step_size));
-  xp->state = res;
+  xp->state = caml_callback2 (step, xp->state, caml_copy_double (step_size));
   CAMLreturn0;
 }
 
@@ -63,31 +62,29 @@ void ocaml_siman_copy_into (
   struct ocaml_siman_object* yp
 ) {
   CAMLparam0 ();
-  CAMLlocal3 (src, dst, copy);
+  CAMLlocal2 (src, copy);
   src = xp->state;
   copy = Field (Field (src, 0), 0);
-  dst = caml_callback (copy, src);
-  yp->state = dst;
+  yp->state = caml_callback (copy, src);
   CAMLreturn0;
 }
 
 void* ocaml_siman_copy (struct ocaml_siman_object* xp) {
   CAMLparam0 ();
-  CAMLlocal3 (src, copy, dst);
+  CAMLlocal2 (src, copy);
   src = xp->state;
   copy = Field (Field (src, 0), 0);
-  dst = caml_callback (copy, src);
   struct ocaml_siman_object* yp = malloc (sizeof (struct ocaml_siman_object));
-  yp->state = dst;
   caml_register_global_root (&(yp->state));
+  yp->state = caml_callback (copy, src);
   CAMLreturnT (struct ocaml_siman_object*, yp);
 }
 
 void ocaml_siman_destroy (struct ocaml_siman_object* xp) {
-  CAMLparam0 ();
+//   CAMLparam0 ();
   caml_remove_global_root (&(xp->state));
   free (xp);
-  CAMLreturn0;
+//   CAMLreturn0;
 }
 
 void ocaml_siman_print (struct ocaml_siman_object* xp) {
