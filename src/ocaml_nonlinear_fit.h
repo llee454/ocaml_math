@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <string.h> // for memcpy
 
-// Prevent OCaml from exporting short macro names.
-#define CAML_NAME_SPACE 1
-
 #include <caml/callback.h>
 #include <caml/mlvalues.h>
 #include <caml/memory.h> // CAMLreturn

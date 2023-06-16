@@ -4,7 +4,7 @@
   (libraries core)
   (inline_tests)
   (preprocess (pps ppx_jane ppx_profile))
-  (foreign_stubs (language c) (names asemio_stats siman)
+  (foreign_stubs (language c) (names asemio_stats)
     (flags -I. -I/usr/local/Cellar/gsl/2.7.1/include/gsl))
   (foreign_archives gslcblas gsl)
 )
