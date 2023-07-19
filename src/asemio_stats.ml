@@ -780,11 +780,15 @@ module Simulated_annealing (M : Simulated_annealing_arg) = struct
   let step (x : t) (delta : float) : t = { x with value = M.step x.value delta }
   let dist (x : t) (y : t) : float = M.dist x.value y.value
   let print = Option.map M.print ~f:(fun f (x : t) : unit -> f x.value)
-
-  let create_state (value : M.t) : t =
-    { intf = { copy; energy; step; dist; print; }; value; }
+  let create_state (value : M.t) : t = { intf = { copy; energy; step; dist; print }; value }
 
   external simulated_annealing : num_iters:int -> step_size:float -> t -> M.t = "ocaml_siman_solve"
 
   let f = simulated_annealing
+end
+
+module Deriv = struct
+  external ocaml_deriv_central : f:(float -> float) -> x:float -> h:float -> float = "ocaml_deriv_central"
+
+  let f = ocaml_deriv_central
 end
