@@ -24,7 +24,11 @@ let main =
   in
   let* () = Lwt_io.printlf "simulated annealing result: %f" result in
   let () =
+    let open Float in
     let open Deriv in
-    f ~f:(fun x -> Float.square x) ~x:3.0 ~h:1.0 |> sprintf "D(x^2)/Dx|{x = 3.0} %0.4f" |> print_endline
+    f ~f:(fun x -> square x) ~x:3.0 ~h:1.0 |> sprintf "D(x^2)/Dx|{x = 3.0} %0.4f" |> print_endline;
+    nth ~f:(fun x -> expt x 3.0) ~x:7.0 ~h:1.0 2
+    |> sprintf "second derivative of x^3 at x = 3: %0.4f"
+    |> print_endline
   in
   Lwt.return_unit
