@@ -3,19 +3,19 @@ open Core
 let sum ?f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. Option.value_map f ~default:x ~f:(fun f -> f x))
 let sumi ~f = Array.foldi ~init:0.0 ~f:(fun i sum x -> sum +. f i x)
 
-let%expect_test "sum_1" =
+let%expect_test "sum" =
   printf "%.1f" (sum ~f:Fn.id [| 1.0; 3.5; -2.5; 8.2 |]);
   [%expect {|10.2|}]
 
 let lsum = List.fold ~init:0.0 ~f:(fun acc x -> acc +. x)
 
-let%expect_test "lsum_1" =
+let%expect_test "lsum" =
   printf "%.1f" (lsum [ 0.0; 1.0; 2.0; 3.0 ]);
   [%expect {|6.0|}]
 
 let lsumf ~f = List.fold ~init:0.0 ~f:(fun acc x -> acc +. f x)
 
-let%expect_test "lsumf_1" =
+let%expect_test "lsumf" =
   printf "%.1f" (lsumf ~f:Fn.id [ 1.0; 3.5; -2.5; 8.2 ]);
   [%expect {|10.2|}]
 
@@ -32,7 +32,7 @@ let%expect_test "pow_int_2" =
 (** Returns x^y *)
 let expt (x : float) (y : float) = exp (y *. log x)
 
-let%expect_test "expt_1" =
+let%expect_test "expt" =
   printf "%.2f" (expt 3.0 7.4);
   [%expect {|3393.89|}]
 
@@ -122,9 +122,27 @@ let%expect_test "matrix_add" =
   matrix_add m1 m2 |> printf !"%{sexp: float array array}";
   [%expect {| ((7 8) (11 13)) |}]
 
+let matrix_sub m0 m1 =
+  if Array.length m0 <> Array.length m1
+  then failwiths ~here:[%here] "Error: invalid dimensions." () [%sexp_of: unit];
+  Array.map2_exn m0 m1 ~f:(Array.map2_exn ~f:( -. ))
+
+let%expect_test "matrix_sub" =
+  let m1 = [| [| 1.0; 1.0 |]; [| 3.0; 4.0 |] |] in
+  let m2 = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
+  matrix_sub m1 m2 |> printf !"%{sexp: float array array}";
+  [%expect {| ((-5 -6) (-5 -5)) |}]
+
+let matrix_scalar_mult m x = Array.map m ~f:(Array.map ~f:(( *. ) x))
+
+let%expect_test "matrix_scalar_mult" =
+  let m1 = [| [| 1.0; 3.0 |]; [| 5.0; 7.0 |] |] in
+  matrix_scalar_mult m1 3.0 |> printf !"%{sexp: float array array}";
+  [%expect {| ((3 9) (15 21)) |}]
+
 external matrix_mult : float array array -> float array array -> float array array = "ocaml_matrix_mult"
 
-let%expect_test "matrix_mult_1" =
+let%expect_test "matrix_mult" =
   let m1 = [| [| 1.0; 1.0; 2.0 |]; [| 3.0; 4.0; 5.0 |] |] in
   let m2 = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |]; [| 10.0; 11.0 |] |] in
   matrix_mult m1 m2 |> printf !"%{sexp: float array array}";
@@ -139,7 +157,7 @@ let matrix_transpose (xs : float array array) : float array array =
     Array.init ncols ~f:(fun j -> Array.init nrows ~f:(fun i -> xs.(i).(j)))
   )
 
-let%expect_test "matrix_transpose_1" =
+let%expect_test "matrix_transpose" =
   let xs = [| [| 1.0; 1.0; 2.0 |]; [| 3.0; 4.0; 5.0 |] |] in
   matrix_transpose xs |> printf !"%{sexp: float array array}";
   [%expect {|((1 3) (1 4) (2 5))|}]
@@ -147,13 +165,13 @@ let%expect_test "matrix_transpose_1" =
 (** Accepts a two by two matrix and returns its determinant *)
 let matrix_22_det (m : float array array) = Float.((m.(0).(0) * m.(1).(1)) - (m.(0).(1) * m.(1).(0)))
 
-let%expect_test "matrix_22_det_0" =
+let%expect_test "matrix_22_det" =
   matrix_22_det [| [| 3.0; 7.0 |]; [| 1.0; -4.0 |] |] |> printf !"%{sexp: float}";
   [%expect {| -19 |}]
 
 external matrix_inv : float array array -> float array array = "ocaml_gsl_matrix_inv"
 
-let%expect_test "matrix_inv_1" =
+let%expect_test "matrix_inv" =
   let m = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
   matrix_inv m |> printf !"%{sexp: float array array}";
   [%expect {| ((-4.5 3.5) (4 -3)) |}]
@@ -169,14 +187,14 @@ let matrix_22_inv m =
   res.(1).(1) <- m.(0).(0) / det;
   res
 
-let%expect_test "matrix_22_inv_1" =
+let%expect_test "matrix_22_inv" =
   let m = [| [| 6.0; 7.0 |]; [| 8.0; 9.0 |] |] in
   matrix_22_inv m |> printf !"%{sexp: float array array}";
   [%expect {| ((-4.5 3.5) (4 -3)) |}]
 
 external mean : float array -> float = "ocaml_mean"
 
-let%expect_test "mean_1" =
+let%expect_test "mean" =
   printf "%.4f" (mean [| 3.1; 2.7; -1.5; 0.5; -3.12 |]);
   [%expect {|0.3360|}]
 
