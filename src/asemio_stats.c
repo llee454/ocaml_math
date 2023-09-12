@@ -24,6 +24,8 @@
 #include <ocaml_siman.h>
 #include <ocaml_nonlinear_fit.h>
 #include <ocaml_deriv.h>
+#include <ocaml_fft.h>
+#include <ocaml_complex.h>
 
 CAMLprim value ocaml_gsl_pow_int (value x, value n) {
   CAMLparam2 (x, n);
