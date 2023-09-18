@@ -123,6 +123,9 @@ CAMLprim value ocaml_gsl_matrix_inv (value xs) {
   CAMLlocal2 (result, result_row);
 
   const size_t nrows = Wosize_val (xs);
+  if (nrows == 0) {
+    GSL_ERROR("[ocaml_gsl_matrix_inv] the given matrix is empty.", GSL_EINVAL);
+  }
   const size_t ncols = nrows > 0 ? Wosize_val (Field (xs, 0)) : 0;
   if (nrows != ncols) {
     GSL_ERROR("[ocaml_gsl_matrix_inv] the given matrix is not invertable.", GSL_EINVAL);
@@ -142,7 +145,13 @@ CAMLprim value ocaml_gsl_matrix_inv (value xs) {
   free (signum);
 
   gsl_matrix* inv = gsl_matrix_alloc (nrows, ncols);
-  gsl_linalg_LU_invert (x, perm, inv);
+  int status = gsl_linalg_LU_invert (x, perm, inv);
+  if (status != 0) {
+    gsl_matrix_free (x);
+    gsl_matrix_free (inv);
+    gsl_permutation_free (perm);
+    GSL_ERROR("[ocaml_gsl_matrix_inv] An error occured while trying to compute the inverse of a matrix.", status);
+  }
 
   result = caml_alloc (nrows, 0);
   for (size_t i = 0; i < nrows; i ++) {
@@ -332,7 +341,7 @@ double callback (double x, void* params) {
 
 CAMLprim value ocaml_integrate (value f, value lower, value upper) {
   CAMLparam3 (f, lower, upper);
-  CAMLlocal1 (result);
+  CAMLlocal2 (result, aux);
   double out;
   double err;
   size_t neval;
@@ -345,15 +354,19 @@ CAMLprim value ocaml_integrate (value f, value lower, value upper) {
   };
   int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), 0.0001, 0, &out, &err, &neval);
   result = caml_alloc (3, 0);
-  Store_field (result, 0, caml_copy_double (out));
-  Store_field (result, 1, caml_copy_double (err));
+
+  aux = caml_copy_double (out);
+  Store_field (result, 0, aux);
+  aux = caml_copy_double (err);
+  Store_field (result, 1, aux);
   Store_field (result, 2, Val_long (neval));
+
   CAMLreturn (result);
 }
 
 CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
   CAMLparam3 (f, lower, upper);
-  CAMLlocal1 (result);
+  CAMLlocal2 (result, aux);
   double out;
   double err;
   size_t limit = 100;
@@ -370,8 +383,11 @@ CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
   int status =  gsl_integration_qag (F, Double_val (lower), Double_val (upper), 0.0001, 0, limit, GSL_INTEG_GAUSS61, w, &out, &err);
   gsl_integration_workspace_free (w);
   result = caml_alloc (3, 0);
-  Store_field (result, 0, caml_copy_double (out));
-  Store_field (result, 1, caml_copy_double (err));
+
+  aux = caml_copy_double (out);
+  Store_field (result, 0, aux);
+  aux = caml_copy_double (err);
+  Store_field (result, 1, aux);
   Store_field (result, 2, Val_long (0));
 
   caml_remove_global_root (&params->h);
@@ -383,7 +399,7 @@ CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
 
 CAMLprim value ocaml_integration_qagp (value f, value lower, value upper, value singularities) {
   CAMLparam4 (f, lower, upper, singularities);
-  CAMLlocal1 (result);
+  CAMLlocal2 (result, aux);
   double out;
   double err;
   size_t limit = 100;
@@ -407,8 +423,11 @@ CAMLprim value ocaml_integration_qagp (value f, value lower, value upper, value 
   int status =  gsl_integration_qagp (F, ps, n, 0.0001, 0, limit, w, &out, &err);
   gsl_integration_workspace_free (w);
   result = caml_alloc (3, 0);
-  Store_field (result, 0, caml_copy_double (out));
-  Store_field (result, 1, caml_copy_double (err));
+
+  aux = caml_copy_double (out);
+  Store_field (result, 0, aux);
+  aux = caml_copy_double (err);
+  Store_field (result, 1, aux);
   Store_field (result, 2, Val_long (0));
 
   caml_remove_global_root (&params->h);
@@ -421,23 +440,30 @@ CAMLprim value ocaml_integration_qagp (value f, value lower, value upper, value 
 
 CAMLprim value ocaml_integration_qagi (value f) {
   CAMLparam1 (f);
-  CAMLlocal1 (result);
+  CAMLlocal2 (result, aux);
   double out;
   double err;
   size_t limit = 100;
-  struct callback_params params = {
-    .h = f
-  };
-  gsl_function F = {
-    .function = &callback,
-    .params   = &params
-  };
+
+  struct callback_params* params = malloc (sizeof (struct callback_params));
+  params->h = f;
+  caml_register_global_root (&params->h);
+
+  gsl_function* F = malloc (sizeof (gsl_function));
+  F->function = &callback;
+  F->params   = params;
+
   gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
-  int status =  gsl_integration_qagi (&F, 0.0001, 0, limit, w, &out, &err);
+  int status =  gsl_integration_qagi (F, 0.0001, 0, limit, w, &out, &err);
   result = caml_alloc (3, 0);
-  Store_field (result, 0, caml_copy_double (out));
-  Store_field (result, 1, caml_copy_double (err));
+
+  aux = caml_copy_double (out);
+  Store_field (result, 0, aux);
+  aux = caml_copy_double (err);
+  Store_field (result, 1, aux);
   Store_field (result, 2, Val_long (0));
+
   gsl_integration_workspace_free (w);
+  caml_remove_global_root (&params->h);
   CAMLreturn (result);
 }
