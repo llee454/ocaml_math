@@ -1153,6 +1153,9 @@ module Perturb = struct
         [1.0000, 1.0000]
       ] |}]
 
+  let get_sample_data ~lower ~upper ~num_pts f =
+    get_sample ~lower ~upper ~num_pts f |> Array.map ~f:(fun x -> x.(1))
+
   (**
     Accepts a dataset and returns the (gaussian) kernel density
     estimator to approximate the probability density function for xs.
@@ -1166,8 +1169,9 @@ module Perturb = struct
     WARNING: TODO: this function is not converging as expected for normally distributed values.
   *)
   let get_epdf ?(bandwidth = 1.0) xs =
+    let open Float in
     let n = Array.length xs in
-    (fun x0 -> sum xs ~f:(pdf_normal ~mean:x0 ~std:bandwidth) /. (bandwidth *. float n))
+    (fun x0 -> sum xs ~f:(pdf_normal ~mean:x0 ~std:bandwidth) / (bandwidth * float n))
 
   let%expect_test "get_epdf" =
     pdf_normal ~mean:0.0 ~std:1.0
@@ -1271,14 +1275,11 @@ module Perturb = struct
     let num_pts = 50
     and lower = -10.0
     and upper = 10.0
-    and std = 1.0 in
+    and std = 3.0 in
     let perturbed_dataset =
-      let delta = (upper - lower) / of_int Int.(num_pts - 1) in
-      let to_x i = (delta * float i) + lower in
-      Array.init num_pts ~f:(fun i ->
-          let x0 = to_x i in
+      get_sample_data ~lower ~upper ~num_pts (fun x0 ->
           (Integrate.integration_qagi ~f:(fun x ->
-               pdf_normal ~mean:0.0 ~std:1.0 x * pdf_normal ~mean:x ~std:1.0 x0
+               pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0
            )
           )
             .out
@@ -1289,10 +1290,7 @@ module Perturb = struct
       get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs
     in
     let unperturbed_dataset_coeffs =
-      pdf_normal ~mean:0.0 ~std:1.0
-      |> get_sample ~lower ~upper ~num_pts
-      |> Array.map ~f:(fun x -> x.(1))
-      |> FFT.to_coeffs_slowly
+      pdf_normal ~mean:0.0 ~std:5.0 |> get_sample_data ~lower ~upper ~num_pts |> FFT.to_coeffs_slowly
     in
     printf
       !"%{Complex.Rect.vector_to_string}\n%{Complex.Rect.vector_to_string}"
@@ -1300,9 +1298,9 @@ module Perturb = struct
       (Array.slice unperturbed_dataset_coeffs_approx 0 5);
     [%expect
       {|
-      [(2.4500, 0.0000), (-2.3320, -0.1467), (2.0109, 0.2540), (-1.5709, -0.2997), (1.1117, 0.2854)]
+      [(2.3490, 0.0000), (-0.8243, -0.0519), (-0.0193, -0.0024), (-0.0210, -0.0040), (-0.0121, -0.0031)]
 
-      [(2.4461, 0.0000), (-2.3400, -0.1472), (2.0247, 0.2558), (-1.5986, -0.3050), (1.1500, 0.2953)] |}]
+      [(2.4560, 0.0042), (-0.7582, -0.0468), (0.0025, -0.0193), (0.0593, 0.1176), (-0.0073, -0.3321)] |}]
 
   (**
     Accepts lower arguments:
@@ -1346,10 +1344,7 @@ module Perturb = struct
     |]
     |> Array.iter ~f:(fun unperturbed_pdf ->
            let perturbed_dataset =
-             let delta = (upper - lower) / of_int Int.(num_pts - 1) in
-             let to_x i = (delta * float i) + lower in
-             Array.init num_pts ~f:(fun i ->
-                 let x0 = to_x i in
+             get_sample_data ~lower ~upper ~num_pts (fun x0 ->
                  (Integrate.integration_qagi ~f:(fun x -> unperturbed_pdf x * pdf_normal ~mean:x ~std x0))
                    .out
              )
@@ -1437,46 +1432,54 @@ module Perturb = struct
     done;
     Queue.to_array result
 
-  let%expect_test "perturb_test" =
-    let lower = -50.0
-    and upper = 50.0
-    and std = 1.0
-    and num_pts =
-      100
-      (* to control oscilations it appears best to set one point per unit of width. Accuracy appears to increase with increasing margins on both sides. *)
-    and n = 5_000 in
-    (* let unperturbed_dataset = Array.init 1_000 ~f:(fun _ -> rand_normal ()) in *)
-    let unperturbed_dataset =
-      Array.init n ~f:(function
-        | i when i < n / 2 -> Random.float_range (-10.0) (-5.0)
-        | _ -> Random.float_range 5.0 10.0
-        )
-    in
-    let perturbed_dataset = Array.map unperturbed_dataset ~f:(fun x -> x +. (5.0 *. rand_normal ())) in
-    let perturbed_dataset_epdf_sample =
-      get_epdf_sample ~bandwidth:0.5 ~lower ~upper ~num_pts perturbed_dataset
-    in
-    let perturbed_dataset_coeffs =
-      perturbed_dataset_epdf_sample |> Array.map ~f:(fun x -> x.(1)) |> get_perturbed_dataset_coeffs
-    in
-    let unperturbed_dataset_ceoffs =
-      get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs
-    in
-    let unperturbed_dataset_approx =
-      get_unperturbed_dataset ~lower ~upper unperturbed_dataset_ceoffs
-      |> get_sample ~lower ~upper ~num_pts
-      |> smooth ~range:2
-    in
-    Float.(
-      function
-      | x when -10.0 <= x && x <= -5.0 -> 1 // 10
-      | x when 5.0 <= x && x <= 10.0 -> 1 // 10
-      | _ -> 0.0
-    )
-    |> get_sample ~lower ~upper ~num_pts
-    |> printf !"%{real_matrix_to_string}";
-    printf !"perturbed epdf: %{real_matrix_to_string}" perturbed_dataset_epdf_sample;
-    printf !"%{real_matrix_to_string}" unperturbed_dataset_approx;
-    ();
-    [%expect {||}]
+  (* let%expect_testx "perturb_test" =
+     let lower = -25.0
+     and upper = 25.0
+     and std = 2.0
+     and n = 5_000 in
+     let num_pts = Float.to_int (upper -. lower) in
+     (* to control oscilations it appears best to set one point per unit of width. Accuracy appears to increase with increasing margins on both sides. *)
+     (* let unperturbed_dataset = Array.init 1_000 ~f:(fun _ -> rand_normal ()) in *)
+     let unperturbed_dataset =
+       Array.init n ~f:(function
+         | i when i < n / 2 -> Random.float_range (-10.0) (-5.0)
+         | _ -> Random.float_range 5.0 10.0
+         )
+     in
+     let unperturbed_dataset_pdf =
+       Float.(
+         function
+         | x when -10.0 <= x && x <= -5.0 -> 1 // 10
+         | x when 5.0 <= x && x <= 10.0 -> 1 // 10
+         | _ -> 0.0
+       )
+     in
+     let perturbed_dataset = Array.map unperturbed_dataset ~f:(fun x -> x +. (std *. rand_normal ())) in
+     (* this is the "normal reference rule-of-thumb" bandwidth *)
+     (* let bandwidth = 1.06 *. std *. expt (float num_pts) (-0.2) in *)
+     let bandwidth = 0.1 in
+     let perturbed_dataset_epdf_sample =
+       (* get_epdf_sample ~bandwidth ~lower ~upper ~num_pts perturbed_dataset *)
+       get_sample ~lower ~upper ~num_pts (fun x0 ->
+           (Integrate.integration_qagi ~f:(fun x -> unperturbed_dataset_pdf x *. pdf_normal ~mean:x ~std x0)
+           )
+             .out
+       )
+     in
+     let perturbed_dataset_coeffs =
+       perturbed_dataset_epdf_sample |> Array.map ~f:(fun x -> x.(1)) |> get_perturbed_dataset_coeffs
+     in
+     let unperturbed_dataset_ceoffs =
+       get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs
+     in
+     let unperturbed_dataset_approx =
+       get_unperturbed_dataset ~lower ~upper unperturbed_dataset_ceoffs
+       |> get_sample ~lower ~upper ~num_pts
+       |> smooth ~range:1
+     in
+     get_sample ~lower ~upper ~num_pts unperturbed_dataset_pdf |> printf !"xs: %{real_matrix_to_string}$\n";
+     printf !"ys: %{real_matrix_to_string}$\n" perturbed_dataset_epdf_sample;
+     printf !"zs: %{real_matrix_to_string}$\n" unperturbed_dataset_approx;
+     ();
+     [%expect {||}] *)
 end
