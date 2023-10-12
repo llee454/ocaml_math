@@ -15,9 +15,13 @@ let main =
       type t = float
 
       let copy x = x
+
       let energy x = (x +. 7.0) *. (x +. 7.0)
+
       let step x dist = x +. Random.float (2.0 *. dist) -. dist
+
       let dist x y = Float.abs (x -. y)
+
       let print = None (* Some (fun x -> print_endline @@ sprintf "state: %0.4f" x) *)
     end) in
     SA.(f ~num_iters:1_000 ~step_size:1.0 (create_state 5.0))

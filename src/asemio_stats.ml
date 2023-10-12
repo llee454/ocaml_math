@@ -1,6 +1,7 @@
 open Core
 
 let sum ?f = Array.fold ~init:0.0 ~f:(fun sum x -> sum +. Option.value_map f ~default:x ~f:(fun f -> f x))
+
 let sumi ~f = Array.foldi ~init:0.0 ~f:(fun i sum x -> sum +. f i x)
 
 let%expect_test "sum" =
@@ -53,15 +54,20 @@ let%expect_test "fact_3" =
 external gamma : float -> float = "ocaml_gsl_sf_gamma"
 
 type vector = float array [@@deriving compare, equal, sexp]
+
 type matrix = float array array [@@deriving compare, equal, sexp]
 
 let vector_to_string to_string ?(indent = 0) xs =
   String.make indent ' ' ^ "[" ^ (Array.map xs ~f:to_string |> String.concat_array ~sep:", ") ^ "]\n"
 
 let real_vector_to_string = vector_to_string (sprintf "%0.4f")
+
 let vector_scalar_mult x = Array.map ~f:(( *. ) x)
+
 let vector_add = Array.map2_exn ~f:( +. )
+
 let vector_sub = Array.map2_exn ~f:( -. )
+
 let vector_inner_product = Array.fold2_exn ~init:0.0 ~f:(fun acc x0 y0 -> acc +. (x0 *. y0))
 
 let%expect_test "vector_inner_product_1" =
@@ -123,11 +129,10 @@ let matrix_to_string to_string ?(indent = 0) m =
   in
   tab indent "[\n";
   Array.map m ~f:(fun row ->
-      String.make (indent + 2) ' '
-      ^ "["
-      ^ (Array.map row ~f:to_string |> String.concat_array ~sep:", ")
-      ^ "]"
-  )
+    String.make (indent + 2) ' '
+    ^ "["
+    ^ (Array.map row ~f:to_string |> String.concat_array ~sep:", ")
+    ^ "]" )
   |> String.concat_array ~sep:",\n"
   |> Buffer.add_string buffer;
   tab indent "\n]\n";
@@ -176,8 +181,7 @@ let matrix_transpose (xs : float array array) : float array array =
   then [||]
   else (
     let ncols = Array.length xs.(0) in
-    Array.init ncols ~f:(fun j -> Array.init nrows ~f:(fun i -> xs.(i).(j)))
-  )
+    Array.init ncols ~f:(fun j -> Array.init nrows ~f:(fun i -> xs.(i).(j))) )
 
 let%expect_test "matrix_transpose" =
   let xs = [| [| 1.0; 1.0; 2.0 |]; [| 3.0; 4.0; 5.0 |] |] in
@@ -227,6 +231,7 @@ external sample_variance : float array -> float = "ocaml_gsl_stats_variance"
    [%expect {|1.9508|}] *)
 
 external pdf_normal : mean:float -> std:float -> float -> float = "ocaml_gsl_ran_gaussian_pdf"
+
 external cdf_gaussian_p : x:float -> std:float -> float = "ocaml_gsl_cdf_gaussian_P"
 
 let%expect_test "cdf_gaussian_p_1" =
@@ -339,13 +344,13 @@ let%expect_test "binomial_conf_interval" =
   [%expect {| ((1 8) (0 0) (10 10) (0 4)) |}]
 
 external pdf_gamma : a:float -> b:float -> float -> float = "ocaml_gsl_ran_gamma_pdf"
+
 external covariance : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_covariance"
 
 let%expect_test "covariance_1" =
   printf "%.4f"
     (covariance ~xs:[| 0.0; 1.0; 2.0; 3.0; 4.0; 5.0 |]
-       ~ys:[| -0.069; 0.0841; 3.3745; 3.9718; 3.6418; 3.9538 |]
-    );
+       ~ys:[| -0.069; 0.0841; 3.3745; 3.9718; 3.6418; 3.9538 |] );
   [%expect {|3.1384|}]
 
 external correlation : xs:float array -> ys:float array -> float = "ocaml_gsl_stats_correlation"
@@ -368,8 +373,7 @@ let get_covariance_matrix (xs : float array array) : float array array =
         cov.(i).(j) <- covariance ~xs:xs.(i) ~ys:xs.(j)
       done
     done;
-    cov
-  )
+    cov )
 
 module Complex = struct
   module Polar = struct
@@ -388,6 +392,7 @@ module Complex = struct
     [@@deriving fields, sexp]
 
     let zero = { real = 0.0; imag = 0.0 }
+
     let i = { real = 0.0; imag = 1.0 }
 
     external ( + ) : t -> t -> t = "ocaml_complex_add"
@@ -417,7 +422,9 @@ module Complex = struct
       [%expect {| ((real -0.8) (imag -1.4)) |}]
 
     let ( /. ) x k = { real = x.real /. k; imag = x.imag /. k }
+
     let matrix_to_string = matrix_to_string (fun z -> sprintf "(%0.4f, %0.4f)" z.real z.imag)
+
     let vector_to_string = vector_to_string (fun z -> sprintf "(%0.4f, %0.4f)" z.real z.imag)
 
     external matrix_inv : t array array -> t array array = "ocaml_gsl_matrix_complex_inv"
@@ -557,6 +564,7 @@ end
 
 module Erf = struct
   external f : float -> float = "ocaml_gsl_sf_erf_Z"
+
   external q : float -> float = "ocaml_gsl_sf_erf_Q"
 end
 
@@ -720,9 +728,8 @@ module Stats_tests = struct
     (* NOTE: the tests fail when these bounds are expanded. *)
     let Integrate.{ out; _ } =
       Integrate.g ~lower ~upper ~f:(fun x ->
-          let p = 1.0 -. Erf.q x in
-          float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x
-      )
+        let p = 1.0 -. Erf.q x in
+        float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x )
     in
     out
 
@@ -890,9 +897,13 @@ module type Simulated_annealing_arg = sig
   type t
 
   val copy : t -> t
+
   val energy : t -> float
+
   val step : t -> float -> t
+
   val dist : t -> t -> float
+
   val print : (t -> unit) option
 end
 
@@ -947,10 +958,15 @@ module Simulated_annealing (M : Simulated_annealing_arg) = struct
   }
 
   let copy (x : t) : t = { x with value = M.copy x.value }
+
   let energy (x : t) : float = M.energy x.value
+
   let step (x : t) (delta : float) : t = { x with value = M.step x.value delta }
+
   let dist (x : t) (y : t) : float = M.dist x.value y.value
+
   let print = Option.map M.print ~f:(fun f (x : t) : unit -> f x.value)
+
   let create_state (value : M.t) : t = { intf = { copy; energy; step; dist; print }; value }
 
   external simulated_annealing : num_iters:int -> step_size:float -> t -> M.t = "ocaml_siman_solve"
@@ -971,6 +987,7 @@ end
 
 module FFT = struct
   external ocaml_fft_real_transform : float array -> float array = "ocaml_fft_real_transform"
+
   external ocaml_fft_halfcomplex_inverse : float array -> float array = "ocaml_fft_halfcomplex_inverse"
 
   (**
@@ -995,14 +1012,12 @@ module FFT = struct
     let open Complex.Rect in
     let n = Array.length data in
     Array.init n ~f:(fun j ->
-        Array.foldi data ~init:zero ~f:(fun k acc z ->
-            let freq =
-              Complex.from_polar
-                Complex.Polar.{ r = 1.0; theta = Float.(-2.0 * pi * of_int j * of_int k / of_int n) }
-            in
-            acc + (freq *. z)
-        )
-    )
+      Array.foldi data ~init:zero ~f:(fun k acc z ->
+        let freq =
+          Complex.from_polar
+            Complex.Polar.{ r = 1.0; theta = Float.(-2.0 * pi * of_int j * of_int k / of_int n) }
+        in
+        acc + (freq *. z) ) )
 
   external ocaml_fft_halfcomplex_unpack : float array -> Complex.Rect.t array
     = "ocaml_fft_halfcomplex_unpack"
@@ -1080,26 +1095,23 @@ module FFT = struct
     let open Complex.Rect in
     let n = Array.length coeffs in
     Array.init n ~f:(fun j ->
-        Array.foldi coeffs ~init:zero ~f:(fun k acc x ->
-            let freq =
-              Complex.from_polar
-                Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * of_int j * of_int k / of_int n) }
-            in
-            acc + (x * freq)
-        )
-        /. float n
-    )
+      Array.foldi coeffs ~init:zero ~f:(fun k acc x ->
+        let freq =
+          Complex.from_polar
+            Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * of_int j * of_int k / of_int n) }
+        in
+        acc + (x * freq) )
+      /. float n )
 
   let approx_slowly ~lower ~upper coeffs x =
     let open Complex.Rect in
     let n = Array.length coeffs in
     let j : float = Float.(of_int n * (x - lower) / (upper - lower)) in
     Array.foldi coeffs ~init:zero ~f:(fun k acc x ->
-        let freq =
-          Complex.from_polar Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * j * of_int k / of_int n) }
-        in
-        acc + (x * freq)
-    )
+      let freq =
+        Complex.from_polar Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * j * of_int k / of_int n) }
+      in
+      acc + (x * freq) )
     /. float n
 
   (* let%expect_testx "FFT.to_coeffs 3" =
@@ -1137,9 +1149,8 @@ module Perturb = struct
     let delta = Float.((upper - lower) /. of_int Int.(num_pts - 1)) in
     let to_x i = Float.((delta *. of_int i) +. lower) in
     Array.init num_pts ~f:(fun i ->
-        let x = to_x i in
-        [| x; f x |]
-    )
+      let x = to_x i in
+      [| x; f x |] )
 
   let%expect_test "get_sample" =
     [| get_sample ~lower:(-1.0) ~upper:1.0 ~num_pts:4 Fn.id |]
@@ -1278,12 +1289,9 @@ module Perturb = struct
     and std = 3.0 in
     let perturbed_dataset =
       get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-          (Integrate.integration_qagi ~f:(fun x ->
-               pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0
-           )
-          )
-            .out
-      )
+        (Integrate.integration_qagi ~f:(fun x ->
+           pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
+          .out )
     in
     let perturbed_dataset_coeffs = get_perturbed_dataset_coeffs perturbed_dataset in
     let unperturbed_dataset_coeffs_approx =
@@ -1343,24 +1351,21 @@ module Perturb = struct
       | _ -> 0.0);
     |]
     |> Array.iter ~f:(fun unperturbed_pdf ->
-           let perturbed_dataset =
-             get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-                 (Integrate.integration_qagi ~f:(fun x -> unperturbed_pdf x * pdf_normal ~mean:x ~std x0))
-                   .out
-             )
-           in
-           let unperturbed_dataset_approx =
-             get_perturbed_dataset_coeffs perturbed_dataset
-             |> get_unperturbed_dataset_coeffs ~lower ~upper ~std
-             |> get_unperturbed_dataset ~lower ~upper
-             |> get_sample ~lower ~upper ~num_pts
-           in
-           let unperturbed_dataset = unperturbed_pdf |> get_sample ~lower ~upper ~num_pts in
-           printf
-             !"%{real_matrix_to_string}\n%{real_matrix_to_string}"
-             (Array.slice unperturbed_dataset 20 30)
-             (Array.slice unperturbed_dataset_approx 20 30)
-       );
+         let perturbed_dataset =
+           get_sample_data ~lower ~upper ~num_pts (fun x0 ->
+             (Integrate.integration_qagi ~f:(fun x -> unperturbed_pdf x * pdf_normal ~mean:x ~std x0)).out )
+         in
+         let unperturbed_dataset_approx =
+           get_perturbed_dataset_coeffs perturbed_dataset
+           |> get_unperturbed_dataset_coeffs ~lower ~upper ~std
+           |> get_unperturbed_dataset ~lower ~upper
+           |> get_sample ~lower ~upper ~num_pts
+         in
+         let unperturbed_dataset = unperturbed_pdf |> get_sample ~lower ~upper ~num_pts in
+         printf
+           !"%{real_matrix_to_string}\n%{real_matrix_to_string}"
+           (Array.slice unperturbed_dataset 20 30)
+           (Array.slice unperturbed_dataset_approx 20 30) );
     [%expect
       {|
       [
