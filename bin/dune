@@ -5,6 +5,7 @@
     lwt
     lwt.unix
     asemio_stats
+    plplot
   )
   (preprocess (pps
     ppx_jane))

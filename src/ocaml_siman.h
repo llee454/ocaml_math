@@ -67,7 +67,7 @@ CAMLprim value ocaml_siman_solve (value num_iters, value step_size, value state)
 
   gsl_siman_print_t printer = NULL;
   if (Is_some (Field (Field (state, 0), 4))) {
-    printer = ocaml_siman_print;
+    printer = (gsl_siman_print_t) ocaml_siman_print;
   }
 
   gsl_siman_solve (

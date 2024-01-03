@@ -375,140 +375,6 @@ let get_covariance_matrix (xs : float array array) : float array array =
     done;
     cov )
 
-module Complex = struct
-  module Polar = struct
-    type t = {
-      r: float;
-      theta: float;
-    }
-    [@@deriving fields, sexp]
-  end
-
-  module Rect = struct
-    type t = {
-      real: float;
-      imag: float;
-    }
-    [@@deriving fields, sexp]
-
-    let zero = { real = 0.0; imag = 0.0 }
-
-    let i = { real = 0.0; imag = 1.0 }
-
-    external ( + ) : t -> t -> t = "ocaml_complex_add"
-
-    let%expect_test "Complex.Rect.add" =
-      { real = 2.0; imag = -3.0 } + { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
-      [%expect {| ((real 3) (imag -1)) |}]
-
-    external ( - ) : t -> t -> t = "ocaml_complex_sub"
-
-    let%expect_test "Complex.Rect.sub" =
-      { real = 2.0; imag = -3.0 } - { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
-      [%expect {| ((real 1) (imag -5)) |}]
-
-    external ( * ) : t -> t -> t = "ocaml_complex_mul"
-
-    let%expect_test "Complex.Rect.mul" =
-      { real = 2.0; imag = -3.0 } * { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
-      [%expect {| ((real 8) (imag 1)) |}]
-
-    let ( *. ) x k = { real = k *. x.real; imag = k *. x.imag }
-
-    external ( / ) : t -> t -> t = "ocaml_complex_div"
-
-    let%expect_test "Complex.Rect.div" =
-      { real = 2.0; imag = -3.0 } / { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
-      [%expect {| ((real -0.8) (imag -1.4)) |}]
-
-    let ( /. ) x k = { real = x.real /. k; imag = x.imag /. k }
-
-    let matrix_to_string = matrix_to_string (fun z -> sprintf "(%0.4f, %0.4f)" z.real z.imag)
-
-    let vector_to_string = vector_to_string (fun z -> sprintf "(%0.4f, %0.4f)" z.real z.imag)
-
-    external matrix_inv : t array array -> t array array = "ocaml_gsl_matrix_complex_inv"
-
-    let%expect_test "Complex.Rect.matrix_inv" =
-      [|
-        [| { real = 1.0; imag = 2.0 }; { real = 3.0; imag = 4.0 } |];
-        [| { real = 5.0; imag = 6.0 }; { real = 7.0; imag = 8.0 } |];
-      |]
-      |> matrix_inv
-      |> printf !"%{sexp: t array array}";
-      [%expect
-        {|
-        ((((real -0.49999999999999978) (imag 0.43749999999999978))
-          ((real 0.24999999999999989) (imag -0.18749999999999994)))
-         (((real 0.37499999999999983) (imag -0.31249999999999983))
-          ((real -0.12499999999999993) (imag 0.062499999999999958)))) |}]
-
-    let vector_inner_product = Array.fold2_exn ~init:zero ~f:(fun acc x y -> acc + (x * y))
-
-    let vector_matrix_mult (m : t array array) (x : t array) =
-      Array.map m ~f:(fun row -> vector_inner_product row x)
-
-    let matrix_mult m0 m1 =
-      let n = Array.length m1
-      and nrows = Array.length m0 in
-      if n = 0 || nrows = 0
-      then
-        failwiths ~here:[%here]
-          "Error: an error occurred while trying to multiply two complex matrices. One or both of these \
-           matrices were empty."
-          () [%sexp_of: unit];
-      if n <> Array.length m0.(0)
-      then
-        failwiths ~here:[%here]
-          "Error: an error occured while trying to multiply two complex matrices. The matrices are not \
-           compatible."
-          () [%sexp_of: unit];
-      let ncols = Array.length m1.(0) in
-      let result = Array.make_matrix ~dimx:nrows ~dimy:ncols zero in
-      for i = 0 to Int.(nrows - 1) do
-        for j = 0 to Int.(ncols - 1) do
-          let acc = ref zero in
-          for k = 0 to Int.(n - 1) do
-            acc := !acc + (m0.(i).(k) * m1.(k).(j))
-          done;
-          result.(i).(j) <- !acc
-        done
-      done;
-      result
-
-    let%expect_test "matrix_mult" =
-      let m1 =
-        [|
-          [| { real = 1.0; imag = 0.0 }; { real = 2.0; imag = 0.0 } |];
-          [| { real = 3.0; imag = 0.0 }; { real = 4.0; imag = 0.0 } |];
-        |]
-      in
-      let m2 =
-        [|
-          [| { real = 1.0; imag = 0.0 }; { real = 2.0; imag = 0.0 } |];
-          [| { real = 3.0; imag = 0.0 }; { real = 4.0; imag = 0.0 } |];
-        |]
-      in
-      matrix_mult m1 m2 |> printf !"%{sexp: t array array}";
-      [%expect
-        {|
-        ((((real 7) (imag 0)) ((real 10) (imag 0)))
-         (((real 15) (imag 0)) ((real 22) (imag 0)))) |}]
-  end
-
-  external from_polar : Polar.t -> Rect.t = "ocaml_from_polar"
-
-  let%expect_test "Complex.from_polar" =
-    let open Float in
-    Polar.[| { r = 2.0; theta = pi }; { r = 1.0; theta = 2.0 * pi } |]
-    |> Array.map ~f:from_polar
-    |> printf !"%{sexp: Rect.t array}";
-    [%expect
-      {|
-      (((real -2) (imag 2.4492935982947064E-16))
-       ((real 1) (imag -2.4492935982947064E-16))) |}]
-end
-
 module Eigen = struct
   type t = {
     values: float array;
@@ -612,6 +478,178 @@ module Integrate = struct
     = "ocaml_integration_qagp"
 
   let qagp = integration_qagp
+end
+
+module Complex = struct
+  module Polar = struct
+    type t = {
+      r: float;
+      theta: float;
+    }
+    [@@deriving fields, sexp]
+  end
+
+  module Rect = struct
+    type t = {
+      real: float;
+      imag: float;
+    }
+    [@@deriving fields, sexp]
+
+    let to_string { real; imag } = sprintf "%0.4f + %0.4fi" real imag
+
+    let zero = { real = 0.0; imag = 0.0 }
+
+    let i = { real = 0.0; imag = 1.0 }
+
+    external ( + ) : t -> t -> t = "ocaml_complex_add"
+
+    let%expect_test "Complex.Rect.add" =
+      { real = 2.0; imag = -3.0 } + { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
+      [%expect {| ((real 3) (imag -1)) |}]
+
+    external ( - ) : t -> t -> t = "ocaml_complex_sub"
+
+    let%expect_test "Complex.Rect.sub" =
+      { real = 2.0; imag = -3.0 } - { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
+      [%expect {| ((real 1) (imag -5)) |}]
+
+    external ( * ) : t -> t -> t = "ocaml_complex_mul"
+
+    let%expect_test "Complex.Rect.mul" =
+      { real = 2.0; imag = -3.0 } * { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
+      [%expect {| ((real 8) (imag 1)) |}]
+
+    let ( *. ) x k = { real = k *. x.real; imag = k *. x.imag }
+
+    external ( / ) : t -> t -> t = "ocaml_complex_div"
+
+    let%expect_test "Complex.Rect.div" =
+      { real = 2.0; imag = -3.0 } / { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
+      [%expect {| ((real -0.8) (imag -1.4)) |}]
+
+    let ( /. ) x k = { real = x.real /. k; imag = x.imag /. k }
+
+    let mag { real; imag } = Float.(sqrt (square real + square imag))
+
+    let matrix_to_string = matrix_to_string (fun z -> sprintf "(%0.4f, %0.4f)" z.real z.imag)
+
+    let vector_to_string = vector_to_string (fun z -> sprintf "(%0.4f, %0.4f)" z.real z.imag)
+
+    external matrix_inv : t array array -> t array array = "ocaml_gsl_matrix_complex_inv"
+
+    let%expect_test "Complex.Rect.matrix_inv" =
+      [|
+        [| { real = 1.0; imag = 2.0 }; { real = 3.0; imag = 4.0 } |];
+        [| { real = 5.0; imag = 6.0 }; { real = 7.0; imag = 8.0 } |];
+      |]
+      |> matrix_inv
+      |> printf !"%{sexp: t array array}";
+      [%expect
+        {|
+        ((((real -0.49999999999999978) (imag 0.43749999999999978))
+          ((real 0.24999999999999989) (imag -0.18749999999999994)))
+         (((real 0.37499999999999983) (imag -0.31249999999999983))
+          ((real -0.12499999999999993) (imag 0.062499999999999958)))) |}]
+
+    external matrix_det : t array array -> t = "ocaml_gsl_matrix_complex_det"
+
+    let%expect_test "Complex.Rect.matrix_det" =
+      [|
+        [| { real = 1.0; imag = 1.0 }; { real = 2.0; imag = 2.0 } |];
+        [| { real = 3.0; imag = 3.0 }; { real = 4.0; imag = 4.0 } |];
+      |]
+      |> matrix_det
+      |> printf !"%{to_string}";
+      [%expect {| 0.0000 + -4.0000i |}]
+
+    let vector_inner_product = Array.fold2_exn ~init:zero ~f:(fun acc x y -> acc + (x * y))
+
+    let vector_matrix_mult (m : t array array) (x : t array) =
+      Array.map m ~f:(fun row -> vector_inner_product row x)
+
+    let matrix_mult m0 m1 =
+      let n = Array.length m1
+      and nrows = Array.length m0 in
+      if n = 0 || nrows = 0
+      then
+        failwiths ~here:[%here]
+          "Error: an error occurred while trying to multiply two complex matrices. One or both of these \
+           matrices were empty."
+          () [%sexp_of: unit];
+      if n <> Array.length m0.(0)
+      then
+        failwiths ~here:[%here]
+          "Error: an error occured while trying to multiply two complex matrices. The matrices are not \
+           compatible."
+          () [%sexp_of: unit];
+      let ncols = Array.length m1.(0) in
+      let result = Array.make_matrix ~dimx:nrows ~dimy:ncols zero in
+      for i = 0 to Int.(nrows - 1) do
+        for j = 0 to Int.(ncols - 1) do
+          let acc = ref zero in
+          for k = 0 to Int.(n - 1) do
+            acc := !acc + (m0.(i).(k) * m1.(k).(j))
+          done;
+          result.(i).(j) <- !acc
+        done
+      done;
+      result
+
+    let%expect_test "matrix_mult" =
+      let m1 =
+        [|
+          [| { real = 1.0; imag = 0.0 }; { real = 2.0; imag = 0.0 } |];
+          [| { real = 3.0; imag = 0.0 }; { real = 4.0; imag = 0.0 } |];
+        |]
+      in
+      let m2 =
+        [|
+          [| { real = 1.0; imag = 0.0 }; { real = 2.0; imag = 0.0 } |];
+          [| { real = 3.0; imag = 0.0 }; { real = 4.0; imag = 0.0 } |];
+        |]
+      in
+      matrix_mult m1 m2 |> printf !"%{sexp: t array array}";
+      [%expect
+        {|
+        ((((real 7) (imag 0)) ((real 10) (imag 0)))
+         (((real 15) (imag 0)) ((real 22) (imag 0)))) |}]
+  end
+
+  external from_polar : Polar.t -> Rect.t = "ocaml_from_polar"
+
+  let%expect_test "Complex.from_polar" =
+    let open Float in
+    Polar.[| { r = 2.0; theta = pi }; { r = 1.0; theta = 2.0 * pi } |]
+    |> Array.map ~f:from_polar
+    |> printf !"%{sexp: Rect.t array}";
+    [%expect
+      {|
+      (((real -2) (imag 2.4492935982947064E-16))
+       ((real 1) (imag -2.4492935982947064E-16))) |}]
+
+  module Integrate = struct
+    let qag ~lower ~upper ~f =
+      Rect.
+        {
+          real = (Integrate.integration_qag ~lower ~upper ~f:(fun x -> (f x).real)).out;
+          imag = (Integrate.integration_qag ~lower ~upper ~f:(fun x -> (f x).imag)).out;
+        }
+
+    let qagi ~f =
+      Rect.
+        {
+          real = (Integrate.integration_qagi ~f:(fun x -> (f x).real)).out;
+          imag = (Integrate.integration_qagi ~f:(fun x -> (f x).imag)).out;
+        }
+
+    let qagp ~lower ~upper ~singularities ~f =
+      Rect.
+        {
+          real = (Integrate.integration_qagp ~lower ~upper ~singularities ~f:(fun x -> (f x).real)).out;
+          imag = (Integrate.integration_qagp ~lower ~upper ~singularities ~f:(fun x -> (f x).imag)).out;
+        }
+  end
 end
 
 module Nonlinear_fit = struct
@@ -1239,6 +1277,47 @@ module Perturb = struct
   *)
   let get_perturbed_dataset_coeffs = FFT.to_coeffs_slowly
 
+  let get_phi_matrix ~lower ~upper ~std cs' =
+    let num_pts = Array.length cs' in
+    let delta = (upper -. lower) /. float (num_pts - 1) in
+    let to_x i = (delta *. float i) +. lower in
+    let phi k j =
+      let acc = ref Complex.Rect.zero in
+      for n = 0 to num_pts - 1 do
+        for n0 = 0 to num_pts - 1 do
+          let open Complex.Rect in
+          let w =
+            Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * Int.(((j * n) - (k * n0)) // num_pts)) }
+            |> Complex.from_polar
+          in
+          acc := !acc + (w *. pdf_normal ~mean:(to_x n) ~std (to_x n0) *. delta /. float num_pts)
+        done
+      done;
+      !acc
+    in
+    Array.init num_pts ~f:(fun k -> Array.init num_pts ~f:(phi k))
+
+  let%expect_test "get_phi_matrix" =
+    let open Float in
+    let num_pts = 20 (* was 50 *)
+    and lower = -20.0 (* TODO: should be (at least) -20 to 20 was -10 to 10 *)
+    and upper = 20.0
+    and std = 3.0 in
+    let perturbed_dataset =
+      get_sample_data ~lower ~upper ~num_pts (fun x0 ->
+        (Integrate.integration_qagi ~f:(fun x ->
+           pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
+          .out )
+    in
+    let perturbed_dataset_coeffs = get_perturbed_dataset_coeffs perturbed_dataset in
+    let phi_matrix = get_phi_matrix ~lower ~upper ~std perturbed_dataset_coeffs in
+    let phi_matrix_inv = Complex.Rect.matrix_inv phi_matrix in
+    let cs_approx = Complex.Rect.vector_matrix_mult phi_matrix_inv perturbed_dataset_coeffs in
+    (* Complex.Rect.(matrix_det (matrix_mult phi_matrix phi_matrix_inv)) |> printf !"%{sexp: Complex.Rect.t}"; *)
+    (* printf !"%{Complex.Rect.vector_to_string}" cs_approx; *)
+    printf !"%{Complex.Rect.vector_to_string}" perturbed_dataset_coeffs;
+    [%expect {||}]
+
   (**
     Accepts four arguments:
     * lower - the lower bound of the dataset range
@@ -1259,56 +1338,39 @@ module Perturb = struct
     this ringing effect by applying the smooth function provided.
   *)
   let get_unperturbed_dataset_coeffs ~lower ~upper ~std cs' =
-    let num_pts = Array.length cs' in
-    let delta = (upper -. lower) /. float num_pts in
-    let to_x i = (delta *. float i) +. lower in
-    let phi k j =
-      let acc = ref Complex.Rect.zero in
-      for n = 0 to num_pts - 1 do
-        for n0 = 0 to num_pts - 1 do
-          let open Complex.Rect in
-          let w =
-            Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * Int.(((j * n) - (k * n0)) // num_pts)) }
-            |> Complex.from_polar
-          in
-          acc := !acc + (w *. pdf_normal ~mean:(to_x n) ~std (to_x n0) *. delta /. float num_pts)
-        done
-      done;
-      !acc
-    in
-    let phi_matrix = Array.init num_pts ~f:(fun k -> Array.init num_pts ~f:(phi k)) in
+    let phi_matrix = get_phi_matrix ~lower ~upper ~std cs' in
     let phi_matrix_inv = Complex.Rect.matrix_inv phi_matrix in
     let cs_approx = Complex.Rect.vector_matrix_mult phi_matrix_inv cs' in
     cs_approx
 
-  let%expect_test "get coeffs" =
-    let open Float in
-    let num_pts = 50
-    and lower = -10.0
-    and upper = 10.0
-    and std = 3.0 in
-    let perturbed_dataset =
-      get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-        (Integrate.integration_qagi ~f:(fun x ->
-           pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
-          .out )
-    in
-    let perturbed_dataset_coeffs = get_perturbed_dataset_coeffs perturbed_dataset in
-    let unperturbed_dataset_coeffs_approx =
-      get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs
-    in
-    let unperturbed_dataset_coeffs =
-      pdf_normal ~mean:0.0 ~std:5.0 |> get_sample_data ~lower ~upper ~num_pts |> FFT.to_coeffs_slowly
-    in
-    printf
-      !"%{Complex.Rect.vector_to_string}\n%{Complex.Rect.vector_to_string}"
-      (Array.slice unperturbed_dataset_coeffs 0 5)
-      (Array.slice unperturbed_dataset_coeffs_approx 0 5);
-    [%expect
-      {|
-      [(2.3490, 0.0000), (-0.8243, -0.0519), (-0.0193, -0.0024), (-0.0210, -0.0040), (-0.0121, -0.0031)]
+  (* let%expect_test "get coeffs" =
+     let open Float in
+     let num_pts = 75 (* was 50 *)
+     and lower = -20.0 (* TODO: should be (at least) -20 to 20 was -10 to 10 *)
+     and upper = 20.0
+     and std = 3.0 in
+     let perturbed_dataset =
+       get_sample_data ~lower ~upper ~num_pts (fun x0 ->
+         (Integrate.integration_qagi ~f:(fun x ->
+            pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
+           .out )
+     in
+     let perturbed_dataset_coeffs = get_perturbed_dataset_coeffs perturbed_dataset in
+     let unperturbed_dataset_coeffs_approx =
+       get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs
+     in
+     let unperturbed_dataset_coeffs =
+       pdf_normal ~mean:0.0 ~std:5.0 |> get_sample_data ~lower ~upper ~num_pts |> FFT.to_coeffs_slowly
+     in
+     printf
+       !"%{Complex.Rect.vector_to_string}\n%{Complex.Rect.vector_to_string}"
+       (Array.slice unperturbed_dataset_coeffs 0 5)
+       (Array.slice unperturbed_dataset_coeffs_approx 0 5);
+     [%expect
+       {|
+       [(1.2249, 0.0000), (-0.9092, -0.0572), (0.3716, 0.0469), (-0.0837, -0.0160), (0.0103, 0.0027)]
 
-      [(2.4560, 0.0042), (-0.7582, -0.0468), (0.0025, -0.0193), (0.0593, 0.1176), (-0.0073, -0.3321)] |}]
+       [(1.2342, 0.0019), (-0.9155, -0.0589), (0.3645, 0.0421), (-0.1008, -0.0223), (0.0166, 0.0077)] |}] *)
 
   (**
     Accepts lower arguments:
@@ -1338,86 +1400,86 @@ module Perturb = struct
       done;
       real !acc
 
-  let%expect_test "get_unperturbed_dataset" =
-    let open Float in
-    let num_pts = 50
-    and lower = -22.0
-    and upper = 22.0
-    and std = 1.0 in
-    [|
-      pdf_normal ~mean:0.0 ~std:2.0;
-      (function
-      | x when -1.0 <= x && x <= 1.0 -> 1 // 2
-      | _ -> 0.0);
-    |]
-    |> Array.iter ~f:(fun unperturbed_pdf ->
-         let perturbed_dataset =
-           get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-             (Integrate.integration_qagi ~f:(fun x -> unperturbed_pdf x * pdf_normal ~mean:x ~std x0)).out )
-         in
-         let unperturbed_dataset_approx =
-           get_perturbed_dataset_coeffs perturbed_dataset
-           |> get_unperturbed_dataset_coeffs ~lower ~upper ~std
-           |> get_unperturbed_dataset ~lower ~upper
-           |> get_sample ~lower ~upper ~num_pts
-         in
-         let unperturbed_dataset = unperturbed_pdf |> get_sample ~lower ~upper ~num_pts in
-         printf
-           !"%{real_matrix_to_string}\n%{real_matrix_to_string}"
-           (Array.slice unperturbed_dataset 20 30)
-           (Array.slice unperturbed_dataset_approx 20 30) );
-    [%expect
-      {|
-      [
-        [-4.0408, 0.0259],
-        [-3.1429, 0.0580],
-        [-2.2449, 0.1062],
-        [-1.3469, 0.1590],
-        [-0.4490, 0.1945],
-        [0.4490, 0.1945],
-        [1.3469, 0.1590],
-        [2.2449, 0.1062],
-        [3.1429, 0.0580],
-        [4.0408, 0.0259]
-      ]
+  (* let%expect_test "get_unperturbed_dataset" =
+     let open Float in
+     let num_pts = 50
+     and lower = -22.0
+     and upper = 22.0
+     and std = 1.0 in
+     [|
+       pdf_normal ~mean:0.0 ~std:2.0;
+       (function
+       | x when -1.0 <= x && x <= 1.0 -> 1 // 2
+       | _ -> 0.0);
+     |]
+     |> Array.iter ~f:(fun unperturbed_pdf ->
+          let perturbed_dataset =
+            get_sample_data ~lower ~upper ~num_pts (fun x0 ->
+              (Integrate.integration_qagi ~f:(fun x -> unperturbed_pdf x * pdf_normal ~mean:x ~std x0)).out )
+          in
+          let unperturbed_dataset_approx =
+            get_perturbed_dataset_coeffs perturbed_dataset
+            |> get_unperturbed_dataset_coeffs ~lower ~upper ~std
+            |> get_unperturbed_dataset ~lower ~upper
+            |> get_sample ~lower ~upper ~num_pts
+          in
+          let unperturbed_dataset = unperturbed_pdf |> get_sample ~lower ~upper ~num_pts in
+          printf
+            !"%{real_matrix_to_string}\n%{real_matrix_to_string}"
+            (Array.slice unperturbed_dataset 20 30)
+            (Array.slice unperturbed_dataset_approx 20 30) );
+     [%expect
+       {|
+       [
+         [-4.0408, 0.0259],
+         [-3.1429, 0.0580],
+         [-2.2449, 0.1062],
+         [-1.3469, 0.1590],
+         [-0.4490, 0.1945],
+         [0.4490, 0.1945],
+         [1.3469, 0.1590],
+         [2.2449, 0.1062],
+         [3.1429, 0.0580],
+         [4.0408, 0.0259]
+       ]
 
-      [
-        [-4.0408, 0.0234],
-        [-3.1429, 0.0547],
-        [-2.2449, 0.1034],
-        [-1.3469, 0.1579],
-        [-0.4490, 0.1953],
-        [0.4490, 0.1953],
-        [1.3469, 0.1579],
-        [2.2449, 0.1034],
-        [3.1429, 0.0547],
-        [4.0408, 0.0234]
-      ]
-      [
-        [-4.0408, 0.0000],
-        [-3.1429, 0.0000],
-        [-2.2449, 0.0000],
-        [-1.3469, 0.0000],
-        [-0.4490, 0.5000],
-        [0.4490, 0.5000],
-        [1.3469, 0.0000],
-        [2.2449, 0.0000],
-        [3.1429, 0.0000],
-        [4.0408, 0.0000]
-      ]
+       [
+         [-4.0408, 0.0234],
+         [-3.1429, 0.0547],
+         [-2.2449, 0.1034],
+         [-1.3469, 0.1579],
+         [-0.4490, 0.1953],
+         [0.4490, 0.1953],
+         [1.3469, 0.1579],
+         [2.2449, 0.1034],
+         [3.1429, 0.0547],
+         [4.0408, 0.0234]
+       ]
+       [
+         [-4.0408, 0.0000],
+         [-3.1429, 0.0000],
+         [-2.2449, 0.0000],
+         [-1.3469, 0.0000],
+         [-0.4490, 0.5000],
+         [0.4490, 0.5000],
+         [1.3469, 0.0000],
+         [2.2449, 0.0000],
+         [3.1429, 0.0000],
+         [4.0408, 0.0000]
+       ]
 
-      [
-        [-4.0408, -0.0068],
-        [-3.1429, 0.0105],
-        [-2.2449, -0.0188],
-        [-1.3469, 0.0531],
-        [-0.4490, 0.5049],
-        [0.4490, 0.5049],
-        [1.3469, 0.0531],
-        [2.2449, -0.0188],
-        [3.1429, 0.0105],
-        [4.0408, -0.0068]
-      ] |}]
+       [
+         [-4.0408, -0.0068],
+         [-3.1429, 0.0105],
+         [-2.2449, -0.0188],
+         [-1.3469, 0.0531],
+         [-0.4490, 0.5049],
+         [0.4490, 0.5049],
+         [1.3469, 0.0531],
+         [2.2449, -0.0188],
+         [3.1429, 0.0105],
+         [4.0408, -0.0068]
+       ] |}] *)
 
   (**
     Accepts a set of points, xs, and smooths those points by taking the

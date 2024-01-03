@@ -127,14 +127,19 @@ CAMLprim value ocaml_gsl_matrix_complex_inv (value M) {
   }
   free (x);
 
-  int* signum = malloc (nrows * sizeof (int));
+  int* signum = malloc (sizeof (int));
 
-  gsl_permutation* perm = gsl_permutation_alloc (nrows);
-  gsl_linalg_complex_LU_decomp (m, perm, signum);
+  gsl_permutation* perm = gsl_permutation_alloc (nrows); // calloc is not needed because decomp inits perm.
+  int status = gsl_linalg_complex_LU_decomp (m, perm, signum);
   free (signum);
+  if (status != 0) {
+    gsl_matrix_complex_free (m);
+    gsl_permutation_free (perm);
+    GSL_ERROR("[ocaml_gsl_matrix_complex_inv] An error occured while trying to compute the lower upper decomposition of a complex matrix.", status);
+  }
 
   gsl_matrix_complex* inv = gsl_matrix_complex_alloc (nrows, ncols);
-  int status = gsl_linalg_complex_LU_invert (m, perm, inv);
+  status = gsl_linalg_complex_LU_invert (m, perm, inv);
   if (status != 0) {
     gsl_matrix_complex_free (m);
     gsl_matrix_complex_free (inv);
@@ -158,5 +163,50 @@ CAMLprim value ocaml_gsl_matrix_complex_inv (value M) {
   gsl_matrix_complex_free (inv);
   gsl_permutation_free (perm);
 
+  CAMLreturn (result);
+}
+
+CAMLprim value ocaml_gsl_matrix_complex_det (value M) {
+  CAMLparam1 (M);
+  CAMLlocal1 (result);
+
+  const size_t nrows = Wosize_val (M);
+  if (nrows == 0) {
+    GSL_ERROR("[ocaml_gsl_matrix_complex_det] the given matrix is empty.", GSL_EINVAL);
+  }
+  const size_t ncols = nrows > 0 ? Wosize_val (Field (M, 0)) : 0;
+  if (nrows != ncols) {
+    GSL_ERROR("[ocaml_gsl_matrix_complex_det] the given matrix is not square.", GSL_EINVAL);
+  }
+
+  gsl_complex* x = malloc (sizeof (gsl_complex));
+  gsl_matrix_complex* m = gsl_matrix_complex_alloc (nrows, ncols);
+  for (size_t i = 0; i < nrows; i ++) {
+    for (size_t j = 0; j < ncols; j ++) {
+      GSL_SET_COMPLEX (x,
+        Double_field (Field (Field (M, i), j), 0),
+        Double_field (Field (Field (M, i), j), 1));
+      gsl_matrix_complex_set (m, i, j, *x);
+    }
+  }
+  free (x);
+
+  int* signum = malloc (sizeof (int));
+  gsl_permutation* perm = gsl_permutation_alloc (nrows); // calloc is not needed because decomp inits perm.
+  int status = gsl_linalg_complex_LU_decomp (m, perm, signum);
+  if (status != 0) {
+    free (signum);
+    gsl_matrix_complex_free (m);
+    gsl_permutation_free (perm);
+    GSL_ERROR("[ocaml_gsl_matrix_complex_det] An error occured while trying to compute the lower upper decomposition of a complex matrix.", status);
+  }
+  gsl_complex det = gsl_linalg_complex_LU_det (m, *signum);
+  free (signum);
+  gsl_matrix_complex_free (m);
+  gsl_permutation_free (perm);
+
+  result = caml_alloc (2, Double_array_tag);
+  Store_double_field (result, 0, GSL_REAL (det));
+  Store_double_field (result, 1, GSL_IMAG (det));
   CAMLreturn (result);
 }
