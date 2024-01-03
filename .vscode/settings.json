@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "*.mli": "ocaml",
-        "ios": "cpp",
-        "random": "cpp",
-        "*.tcc": "cpp"
-    }
-}
