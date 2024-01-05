@@ -18,7 +18,7 @@
   core
   ppx_jane
   lwt
-  lwt_ppx
+  (eio_main (= 0.14.dev))
   ppx_profile
   conf-gsl
   plplot

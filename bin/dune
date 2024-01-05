@@ -2,8 +2,7 @@
  (name main)
  (libraries
     core
-    lwt
-    lwt.unix
+    eio_main
     asemio_stats
     plplot
   )

@@ -1,3 +1,6 @@
 pin-depends: [
  ["ppx_profile.1.0.0" "git+https://github.com/llee454/ppx_profile.git#main"]
+ ["eio.0.14.dev" "git+https://github.com/ocaml-multicore/eio.git#cbb6ece7b242127bcca1a020b2e6457d7bdca68a"]
+ ["eio_main.0.14.dev" "git+https://github.com/ocaml-multicore/eio.git#cbb6ece7b242127bcca1a020b2e6457d7bdca68a"]
+ ["eio_posix.0.14.dev" "git+https://github.com/ocaml-multicore/eio.git#cbb6ece7b242127bcca1a020b2e6457d7bdca68a"]
 ]
