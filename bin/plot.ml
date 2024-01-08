@@ -34,18 +34,23 @@ let init filename =
 
 let plot ~filename ~title ~x_axis ~y_axis ~f =
   let n = 100 in
-  let Range.{ min = x_min; max = x_max } = Axis.range x_axis |> Option.value ~default:(Range.of_vals [||]) in
+  let Range.{ min = x_min; max = x_max } =
+    Axis.range x_axis |> Option.value ~default:(Range.of_vals [||])
+  in
   let delta = (x_max -. x_min) /. float n in
-  let x = fun i -> x_min +. (float i *. delta) in
+  let x i = x_min +. (float i *. delta) in
   let xs = Array.init n ~f:x in
   let ys = Array.init n ~f:(fun i -> f (x i)) in
   let Range.{ min = y_min; max = y_max } =
     Axis.range y_axis
-    |> Option.value ~default:(Range.{
-      min = Array.min_elt ~compare:[%compare: float] ys |> Option.value ~default:0.0;
-      max = Array.max_elt ~compare:[%compare: float] ys |> Option.value ~default:0.0
-    })
-  in 
+    |> Option.value
+         ~default:
+           Range.
+             {
+               min = Array.min_elt ~compare:[%compare: float] ys |> Option.value ~default:0.0;
+               max = Array.max_elt ~compare:[%compare: float] ys |> Option.value ~default:0.0;
+             }
+  in
   init filename;
   plenv x_min x_max y_min y_max 0 0;
   pllab (Axis.label x_axis) (Axis.label y_axis) title;
@@ -56,8 +61,12 @@ let plot_points ~filename ~ps ~x_axis ~y_axis ~title =
   let n = Array.length ps in
   let xs = Array.init n ~f:(fun i -> ps.(i).(0)) in
   let ys = Array.init n ~f:(fun i -> ps.(i).(1)) in
-  let Range.{ min = x_min; max = x_max } = Axis.range x_axis |> Option.value ~default:(Range.of_vals xs) in
-  let Range.{ min = y_min; max = y_max } = Axis.range y_axis |> Option.value ~default:(Range.of_vals ys) in
+  let Range.{ min = x_min; max = x_max } =
+    Axis.range x_axis |> Option.value ~default:(Range.of_vals xs)
+  in
+  let Range.{ min = y_min; max = y_max } =
+    Axis.range y_axis |> Option.value ~default:(Range.of_vals ys)
+  in
   init filename;
   plenv x_min x_max y_min y_max 0 0;
   pllab (Axis.label x_axis) (Axis.label y_axis) title;

@@ -17,7 +17,6 @@
  (depends
   core
   ppx_jane
-  lwt
   (eio_main (= 0.14.dev))
   ppx_profile
   conf-gsl

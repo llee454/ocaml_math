@@ -20,12 +20,11 @@ let () =
     let Integrate.{ out; err; _ } = Integrate.f ~f:(fun x -> Float.log1p x) ~lower:0.1 ~upper:0.5 in
     Eio.Flow.copy_string (sprintf "integration: result %f err %f\n" out err) stdout
   in
-  (* WARNING: the current version of Eio intermittently throws an exception when the following calls to siman are run in parallel. *)
-  let siman_mutex = Eio.Mutex.create () in
+  (* Note: Random.self_init is not thread safe. You must call this function before you make any parallel calls to Random.float *)
+  Random.self_init ();
   (* III. Parameter estimation using simulated annealing *)
   let () =
     Eio.Fiber.fork ~sw @@ fun () ->
-    Eio.Mutex.use_ro siman_mutex @@ fun () ->
     Eio.Executor_pool.submit_exn ~weight:1.0 pool @@ fun () ->
     let result =
       let module SA = Simulated_annealing (struct
@@ -48,7 +47,6 @@ let () =
   let () =
     (* IV. Parameter estimation using simulated annealing *)
     Eio.Fiber.fork ~sw @@ fun () ->
-    Eio.Mutex.use_ro siman_mutex @@ fun () ->
     Eio.Executor_pool.submit_exn ~weight:1.0 pool @@ fun () ->
     let result =
       let module SA = Simulated_annealing (struct

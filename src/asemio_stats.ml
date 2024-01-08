@@ -129,10 +129,10 @@ let matrix_to_string to_string ?(indent = 0) m =
   in
   tab indent "[\n";
   Array.map m ~f:(fun row ->
-    String.make (indent + 2) ' '
-    ^ "["
-    ^ (Array.map row ~f:to_string |> String.concat_array ~sep:", ")
-    ^ "]" )
+      String.make (indent + 2) ' '
+      ^ "["
+      ^ (Array.map row ~f:to_string |> String.concat_array ~sep:", ")
+      ^ "]" )
   |> String.concat_array ~sep:",\n"
   |> Buffer.add_string buffer;
   tab indent "\n]\n";
@@ -766,8 +766,8 @@ module Stats_tests = struct
     (* NOTE: the tests fail when these bounds are expanded. *)
     let Integrate.{ out; _ } =
       Integrate.g ~lower ~upper ~f:(fun x ->
-        let p = 1.0 -. Erf.q x in
-        float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x )
+          let p = 1.0 -. Erf.q x in
+          float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x )
     in
     out
 
@@ -1050,12 +1050,27 @@ module FFT = struct
     let open Complex.Rect in
     let n = Array.length data in
     Array.init n ~f:(fun j ->
-      Array.foldi data ~init:zero ~f:(fun k acc z ->
-        let freq =
-          Complex.from_polar
-            Complex.Polar.{ r = 1.0; theta = Float.(-2.0 * pi * of_int j * of_int k / of_int n) }
-        in
-        acc + (freq *. z) ) )
+        Array.foldi data ~init:zero ~f:(fun k acc z ->
+            let freq =
+              Complex.from_polar
+                Complex.Polar.{ r = 1.0; theta = Float.(-2.0 * pi * of_int j * of_int k / of_int n) }
+            in
+            acc + (freq *. z) ) )
+
+  let%expect_test "FFT.to_coeffs_slowly" =
+    Complex.Rect.[| 0.0; 1.0; 0.0; 0.0 |]
+    |> to_coeffs_slowly
+    |> Complex.Rect.vector_to_string
+    |> print_endline;
+    Complex.Rect.[| 1.0; 1.0; 0.0; 0.0 |]
+    |> to_coeffs_slowly
+    |> Complex.Rect.vector_to_string
+    |> print_endline;
+    [%expect
+      {|
+      [(1.0000, 0.0000), (0.0000, -1.0000), (-1.0000, -0.0000), (-0.0000, 1.0000)]
+
+      [(2.0000, 0.0000), (1.0000, -1.0000), (0.0000, -0.0000), (1.0000, 1.0000)] |}]
 
   external ocaml_fft_halfcomplex_unpack : float array -> Complex.Rect.t array
     = "ocaml_fft_halfcomplex_unpack"
@@ -1133,40 +1148,24 @@ module FFT = struct
     let open Complex.Rect in
     let n = Array.length coeffs in
     Array.init n ~f:(fun j ->
-      Array.foldi coeffs ~init:zero ~f:(fun k acc x ->
-        let freq =
-          Complex.from_polar
-            Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * of_int j * of_int k / of_int n) }
-        in
-        acc + (x * freq) )
-      /. float n )
+        Array.foldi coeffs ~init:zero ~f:(fun k acc x ->
+            let freq =
+              Complex.from_polar
+                Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * of_int j * of_int k / of_int n) }
+            in
+            acc + (x * freq) )
+        /. float n )
 
   let approx_slowly ~lower ~upper coeffs x =
     let open Complex.Rect in
     let n = Array.length coeffs in
     let j : float = Float.(of_int n * (x - lower) / (upper - lower)) in
     Array.foldi coeffs ~init:zero ~f:(fun k acc x ->
-      let freq =
-        Complex.from_polar Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * j * of_int k / of_int n) }
-      in
-      acc + (x * freq) )
+        let freq =
+          Complex.from_polar Complex.Polar.{ r = 1.0; theta = Float.(2.0 * pi * j * of_int k / of_int n) }
+        in
+        acc + (x * freq) )
     /. float n
-
-  (* let%expect_testx "FFT.to_coeffs 3" =
-     let n = 6 in
-     let data = Array.init n ~f:Float.((fun x -> sin (pi *. (x // n)))) in
-     let xs = to_coeffs_slowly data in
-     let packed_xs = to_coeffs data in
-     (* let xs = unpack_coeffs packed_xs in *)
-     let ys = to_data_slowly xs in
-     let zs = to_data packed_xs in
-     printf
-       !"xs = %{sexp: float array}\n\
-         zs = %{sexp: float array}\n\
-         cs = %{sexp: Complex.Rect.t array}\n\
-         ys = %{sexp: Complex.Rect.t array}"
-       data zs xs ys;
-     [%expect {||}] *)
 end
 
 (**
@@ -1187,8 +1186,8 @@ module Perturb = struct
     let delta = Float.((upper - lower) /. of_int Int.(num_pts - 1)) in
     let to_x i = Float.((delta *. of_int i) +. lower) in
     Array.init num_pts ~f:(fun i ->
-      let x = to_x i in
-      [| x; f x |] )
+        let x = to_x i in
+        [| x; f x |] )
 
   let%expect_test "get_sample" =
     [| get_sample ~lower:(-1.0) ~upper:1.0 ~num_pts:4 Fn.id |]
@@ -1224,40 +1223,35 @@ module Perturb = struct
 
   let%expect_test "get_epdf" =
     pdf_normal ~mean:0.0 ~std:1.0
-    |> get_sample ~lower:(-4.0) ~upper:4.0 ~num_pts:50
-    |> (fun xs -> Array.slice xs 20 30)
+    |> get_sample ~lower:(-4.0) ~upper:4.0 ~num_pts:8
     |> printf !"%{real_matrix_to_string}";
     Array.init 1_000 ~f:(fun _ -> rand_normal ())
     |> get_epdf ~bandwidth:0.79
-    |> get_sample ~lower:(-4.0) ~upper:4.0 ~num_pts:50
-    |> (fun xs -> Array.slice xs 20 30)
+    |> get_sample ~lower:(-4.0) ~upper:4.0 ~num_pts:8
     |> printf !"%{real_matrix_to_string}";
     [%expect
       {|
       [
-        [-0.7347, 0.3046],
+        [-4.0000, 0.0001],
+        [-2.8571, 0.0067],
+        [-1.7143, 0.0918],
         [-0.5714, 0.3388],
-        [-0.4082, 0.3671],
-        [-0.2449, 0.3872],
-        [-0.0816, 0.3976],
-        [0.0816, 0.3976],
-        [0.2449, 0.3872],
-        [0.4082, 0.3671],
         [0.5714, 0.3388],
-        [0.7347, 0.3046]
+        [1.7143, 0.0918],
+        [2.8571, 0.0067],
+        [4.0000, 0.0001]
       ]
       [
-        [-0.7347, 0.3388],
+        [-4.0000, 0.0027],
+        [-2.8571, 0.0306],
+        [-1.7143, 0.1646],
         [-0.5714, 0.3607],
-        [-0.4082, 0.3780],
-        [-0.2449, 0.3900],
-        [-0.0816, 0.3962],
-        [0.0816, 0.3962],
-        [0.2449, 0.3899],
-        [0.4082, 0.3775],
         [0.5714, 0.3594],
-        [0.7347, 0.3365]
-      ] |}]
+        [1.7143, 0.1584],
+        [2.8571, 0.0292],
+        [4.0000, 0.0020]
+      ]
+   |}]
 
   (**
     Accepts four arguments:
@@ -1277,8 +1271,7 @@ module Perturb = struct
   *)
   let get_perturbed_dataset_coeffs = FFT.to_coeffs_slowly
 
-  let get_phi_matrix ~lower ~upper ~std cs' =
-    let num_pts = Array.length cs' in
+  let get_phi_matrix ~num_pts ~lower ~upper ~std =
     let delta = (upper -. lower) /. float (num_pts - 1) in
     let to_x i = (delta *. float i) +. lower in
     let phi k j =
@@ -1299,23 +1292,28 @@ module Perturb = struct
 
   let%expect_test "get_phi_matrix" =
     let open Float in
-    let num_pts = 20 (* was 50 *)
+    let num_pts = 35 (* was 50 *)
     and lower = -20.0 (* TODO: should be (at least) -20 to 20 was -10 to 10 *)
     and upper = 20.0
     and std = 3.0 in
+    let unperturbed_dataset =
+      get_sample_data ~lower ~upper ~num_pts (fun x -> pdf_normal ~mean:0.0 ~std:5.0 x)
+    in
     let perturbed_dataset =
       get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-        (Integrate.integration_qagi ~f:(fun x ->
-           pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
-          .out )
+          (Integrate.integration_qagi ~f:(fun x ->
+               pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
+            .out )
     in
-    let perturbed_dataset_coeffs = get_perturbed_dataset_coeffs perturbed_dataset in
-    let phi_matrix = get_phi_matrix ~lower ~upper ~std perturbed_dataset_coeffs in
+    let phi_matrix = get_phi_matrix ~num_pts ~lower ~upper ~std in
     let phi_matrix_inv = Complex.Rect.matrix_inv phi_matrix in
+    let unperturbed_dataset_coeffs = FFT.to_coeffs_slowly unperturbed_dataset in
+    let perturbed_dataset_coeffs = FFT.to_coeffs_slowly perturbed_dataset in
     let cs_approx = Complex.Rect.vector_matrix_mult phi_matrix_inv perturbed_dataset_coeffs in
-    (* Complex.Rect.(matrix_det (matrix_mult phi_matrix phi_matrix_inv)) |> printf !"%{sexp: Complex.Rect.t}"; *)
-    (* printf !"%{Complex.Rect.vector_to_string}" cs_approx; *)
-    printf !"%{Complex.Rect.vector_to_string}" perturbed_dataset_coeffs;
+    printf !"determinant: %{Complex.Rect}\n"
+      (Complex.Rect.matrix_det (Complex.Rect.matrix_mult phi_matrix phi_matrix_inv));
+    printf !"%{Complex.Rect.vector_to_string}\n" unperturbed_dataset_coeffs;
+    printf !"%{Complex.Rect.vector_to_string}" cs_approx;
     [%expect {||}]
 
   (**
@@ -1338,39 +1336,34 @@ module Perturb = struct
     this ringing effect by applying the smooth function provided.
   *)
   let get_unperturbed_dataset_coeffs ~lower ~upper ~std cs' =
-    let phi_matrix = get_phi_matrix ~lower ~upper ~std cs' in
+    let num_pts = Array.length cs' in
+    let phi_matrix = get_phi_matrix ~num_pts ~lower ~upper ~std in
     let phi_matrix_inv = Complex.Rect.matrix_inv phi_matrix in
     let cs_approx = Complex.Rect.vector_matrix_mult phi_matrix_inv cs' in
     cs_approx
 
-  (* let%expect_test "get coeffs" =
-     let open Float in
-     let num_pts = 75 (* was 50 *)
-     and lower = -20.0 (* TODO: should be (at least) -20 to 20 was -10 to 10 *)
-     and upper = 20.0
-     and std = 3.0 in
-     let perturbed_dataset =
-       get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-         (Integrate.integration_qagi ~f:(fun x ->
-            pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
-           .out )
-     in
-     let perturbed_dataset_coeffs = get_perturbed_dataset_coeffs perturbed_dataset in
-     let unperturbed_dataset_coeffs_approx =
-       get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs
-     in
-     let unperturbed_dataset_coeffs =
-       pdf_normal ~mean:0.0 ~std:5.0 |> get_sample_data ~lower ~upper ~num_pts |> FFT.to_coeffs_slowly
-     in
-     printf
-       !"%{Complex.Rect.vector_to_string}\n%{Complex.Rect.vector_to_string}"
-       (Array.slice unperturbed_dataset_coeffs 0 5)
-       (Array.slice unperturbed_dataset_coeffs_approx 0 5);
-     [%expect
-       {|
-       [(1.2249, 0.0000), (-0.9092, -0.0572), (0.3716, 0.0469), (-0.0837, -0.0160), (0.0103, 0.0027)]
-
-       [(1.2342, 0.0019), (-0.9155, -0.0589), (0.3645, 0.0421), (-0.1008, -0.0223), (0.0166, 0.0077)] |}] *)
+  let%expect_test "get_unperturbed_dataset_coeffs" =
+    let open Float in
+    let num_pts = 50 (* was 50 *)
+    and lower = -40.0 (* TODO: should be (at least) -20 to 20 was -10 to 10 *)
+    and upper = 40.0
+    and std = 3.0 in
+    let unperturbed_dataset =
+      get_sample_data ~lower ~upper ~num_pts (fun x -> pdf_normal ~mean:0.0 ~std:5.0 x)
+    in
+    let perturbed_dataset =
+      get_sample_data ~lower ~upper ~num_pts (fun x0 ->
+          (Integrate.integration_qagi ~f:(fun x ->
+               pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
+            .out )
+    in
+    let unperturbed_dataset_coeffs = FFT.to_coeffs_slowly unperturbed_dataset in
+    let perturbed_dataset_coeffs = FFT.to_coeffs_slowly perturbed_dataset in
+    let cs_approx = get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs in
+    let approx = FFT.to_data_slowly cs_approx in
+    printf !"ps: %{real_vector_to_string};" unperturbed_dataset;
+    printf !"qs: %{real_vector_to_string};" (Array.map approx ~f:Complex.Rect.real);
+    [%expect {||}]
 
   (**
     Accepts lower arguments:
