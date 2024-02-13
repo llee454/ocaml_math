@@ -167,6 +167,37 @@ CAMLprim value ocaml_gsl_matrix_inv (value xs) {
   CAMLreturn (result);
 }
 
+CAMLprim value ocaml_gsl_matrix_det (value xs) {
+  CAMLparam1 (xs);
+
+  const size_t nrows = Wosize_val (xs);
+  if (nrows == 0) {
+    GSL_ERROR("[ocaml_gsl_matrix_det] the given matrix is empty.", GSL_EINVAL);
+  }
+  const size_t ncols = nrows > 0 ? Wosize_val (Field (xs, 0)) : 0;
+  if (nrows != ncols) {
+    GSL_ERROR("[ocaml_gsl_matrix_det] the given matrix is not square.", GSL_EINVAL);
+  }
+
+  gsl_matrix* x = gsl_matrix_alloc (nrows, ncols);
+  for (size_t i = 0; i < nrows; i ++) {
+    for (size_t j = 0; j < ncols; j ++) {
+      gsl_matrix_set (x, i, j, Double_field (Field (xs, i), j));
+    }
+  }
+
+  int* signum = malloc (sizeof (int));
+
+  gsl_permutation* perm = gsl_permutation_alloc (nrows);
+  gsl_linalg_LU_decomp (x, perm, signum);
+
+  double det = gsl_linalg_LU_det (x, *signum);
+  free (signum);
+  gsl_matrix_free (x);
+  gsl_permutation_free (perm);
+  CAMLreturn (caml_copy_double (det));
+}
+
 CAMLprim value ocaml_gsl_ran_gaussian_pdf (value mean, value std, value x) {
   CAMLparam3 (mean, std, x);
   CAMLreturn (caml_copy_double (gsl_ran_gaussian_pdf (Double_val (x) - Double_val (mean), Double_val (std))));

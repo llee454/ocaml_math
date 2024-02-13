@@ -195,6 +195,22 @@ let%expect_test "matrix_22_det" =
   matrix_22_det [| [| 3.0; 7.0 |]; [| 1.0; -4.0 |] |] |> printf !"%{sexp: float}";
   [%expect {| -19 |}]
 
+external matrix_det : float array array -> float = "ocaml_gsl_matrix_det"
+
+let%expect_test "matrix_det" =
+  matrix_det [| [| 3.0; 7.0 |]; [| 1.0; -4.0 |] |] |> printf !"%{sexp: float}";
+  [%expect {| -19 |}]
+
+let%expect_test "matrix_det" =
+  matrix_det [| [| 1.0; 2.0; 3.0 |]; [| 2.0; 5.0; 6.0 |]; [| 3.0; 6.0; 9.0 |] |]
+  |> printf !"%{sexp: float}";
+  [%expect {| -0 |}]
+
+let%expect_test "matrix_det" =
+  matrix_det [| [| 1.0; 2.0; 3.0 |]; [| -2.0; 5.0; 6.0 |]; [| -3.0; -6.0; 9.0 |] |]
+  |> printf !"%{sexp: float}";
+  [%expect {| 162 |}]
+
 external matrix_inv : float array array -> float array array = "ocaml_gsl_matrix_inv"
 
 let%expect_test "matrix_inv" =
@@ -520,6 +536,10 @@ module Complex = struct
       { real = 2.0; imag = -3.0 } * { real = 1.0; imag = 2.0 } |> printf !"%{sexp: t}";
       [%expect {| ((real 8) (imag 1)) |}]
 
+    let ( +. ) x k = { real = k +. x.real; imag = x.imag }
+
+    let ( -. ) x k = { real = x.real -. k; imag = x.imag }
+
     let ( *. ) x k = { real = k *. x.real; imag = k *. x.imag }
 
     external ( / ) : t -> t -> t = "ocaml_complex_div"
@@ -614,6 +634,18 @@ module Complex = struct
         {|
         ((((real 7) (imag 0)) ((real 10) (imag 0)))
          (((real 15) (imag 0)) ((real 22) (imag 0)))) |}]
+
+    let frobenius_norm m = Float.sqrt (sumi m ~f:(fun _i -> sumi ~f:(fun _j z -> Float.square (mag z))))
+
+    let%expect_test "frobenius_norm" =
+      frobenius_norm
+        [|
+          [| { real = 1.0; imag = 0.0 }; { real = -2.0; imag = 0.0 }; { real = 0.0; imag = 0.0 } |];
+          [| { real = -1.0; imag = 0.0 }; { real = 3.0; imag = 0.0 }; { real = 2.0; imag = 0.0 } |];
+          [| { real = 1.0; imag = 0.0 }; { real = -1.0; imag = 0.0 }; { real = 1.0; imag = 0.0 } |];
+        |]
+      |> printf "%0.4f";
+      [%expect {||}]
   end
 
   external from_polar : Polar.t -> Rect.t = "ocaml_from_polar"
