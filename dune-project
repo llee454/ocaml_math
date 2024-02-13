@@ -17,7 +17,7 @@
  (depends
   core
   ppx_jane
-  (eio_main (= 0.14.dev))
+  eio_main
   ppx_profile
   conf-gsl
   plplot
