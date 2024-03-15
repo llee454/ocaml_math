@@ -1195,6 +1195,8 @@ module FFT = struct
 end
 
 (**
+  WARNING: THIS MODULE IS UNSTABLE AND IS NOT FINISHED DO NOT USE!!
+
   This module defines functions that can be used to mask datasets by
   adding gaussian noise and to analyze these datasets by removing
   gaussian noise.
@@ -1568,4 +1570,151 @@ module Perturb = struct
      printf !"zs: %{real_matrix_to_string}$\n" unperturbed_dataset_approx;
      ();
      [%expect {||}] *)
+end
+
+(**
+  This module defines functions that can be used to group elements
+  together.
+
+  Given a set of elements E the transitive closure is a set of subsets
+  called groups G that satisfy the following property:
+
+  for every pair of elements e0 and en, if there exists a sequence
+  of elements e0, e1, e2, ..., en such that every element ei in
+  this sequence shares one or more key values with the following
+  element, then e0 and en are in the same group.
+
+  As a corrolary of this definition, if e0 is in a group g, g also
+  contains every element that shares a key with e0.
+
+  Why would we use this? Imagine that you have a set of people and
+  every person has a list of addresses and we want to cluster together
+  people who lived at the same address. We can use this module to
+  group them together.
+*)
+module Transitive_closure = struct
+  (**
+    Represents the keys that elements have. These will be used to
+    determine if two elements "overlap" and should be grouped together.
+  *)
+  module type Key = sig
+    type t [@@deriving compare, equal, hash, sexp]
+
+    type comparator_witness
+  end
+
+  (** represents the type of elements that will be grouped together *)
+  module type Element = sig
+    type t
+
+    module K : Key
+
+    (** Accepts an elements and returns the keys that it is associated with. *)
+    val get_keys : t -> (K.t, K.comparator_witness) Set.t
+  end
+
+  module Make (E : Element) = struct
+    type t = E.t
+
+    (** Accepts a list of elements and returns their transitive closure. *)
+    let get xs =
+      (* every group will be given a numerical ID. This variable stores the next available ID. *)
+      let next_group_id = ref 0 in
+      (* the group associated with each key that has been seen so far. *)
+      let key_group_tbl : (E.K.t, int) Hashtbl.t = Hashtbl.create (module E.K) in
+      (* the keys that have been seen so far and are associated with each group that has been seen so far. *)
+      let group_keys_tbl : (int, (E.K.t, E.K.comparator_witness) Set.t) Hashtbl.t =
+        Hashtbl.create (module Int)
+      in
+      (* the groups that have been formed so far. *)
+      let groups_tbl : (int, E.t Queue.t) Hashtbl.t = Hashtbl.create (module Int) in
+      List.iter xs ~f:(fun (x : E.t) ->
+          (* find the groups whose keys overlap with the current element *)
+          let keys = E.get_keys x in
+          match Set.to_list keys |> List.filter_map ~f:(Hashtbl.find key_group_tbl) with
+          | [] ->
+            (* none of the groups formed so far overlap with the current element. create a new group and add the element to it. *)
+            let group = Queue.singleton x in
+            let group_id = !next_group_id in
+            incr next_group_id;
+            Hashtbl.add_exn groups_tbl ~key:group_id ~data:group;
+            Set.iter keys ~f:(fun key -> Hashtbl.add_exn key_group_tbl ~key ~data:group_id);
+            Hashtbl.add_exn group_keys_tbl ~key:group_id ~data:keys
+          | [ group_id ] ->
+            (* exactly one group formed so far overlaps with the current element. add the element to the group. *)
+            let group = Hashtbl.find_exn groups_tbl group_id in
+            Queue.enqueue group x;
+            Set.iter keys ~f:(fun key -> Hashtbl.add key_group_tbl ~key ~data:group_id |> Fn.const ());
+            Hashtbl.update group_keys_tbl group_id ~f:(function
+              | None -> failwiths ~here:[%here] "Error: an internal error occured." () [%sexp_of: unit]
+              | Some group_keys -> Set.union group_keys keys )
+          | group_ids ->
+            (* more than one group formed so far overlaps with the current
+               element. merge these groups together and add the current
+               element to the new "merge" group. *)
+            let merge_group_id = List.hd_exn group_ids in
+            let merge_group = Hashtbl.find_exn groups_tbl merge_group_id in
+            List.tl_exn group_ids
+            |> List.iter ~f:(fun group_id ->
+                   let group = Hashtbl.find_exn groups_tbl group_id in
+                   (* merge the group elements *)
+                   Queue.to_list group |> Queue.enqueue_all merge_group;
+                   (* redirect the group keys to point to the merge group *)
+                   Hashtbl.find_exn group_keys_tbl group_id
+                   |> Set.iter
+                        ~f:
+                          (Hashtbl.update key_group_tbl ~f:(function
+                            | None ->
+                              failwiths ~here:[%here] "Error: an internal error occured." ()
+                                [%sexp_of: unit]
+                            | Some _ -> merge_group_id ) );
+                   (* remove the group *)
+                   Hashtbl.remove group_keys_tbl group_id;
+                   Hashtbl.remove groups_tbl group_id );
+            (* add the current element to the merge group *)
+            Queue.enqueue merge_group x;
+            (* add the current element's keys to the key_group tbl *)
+            Set.iter keys ~f:(fun key ->
+                Hashtbl.add key_group_tbl ~key ~data:merge_group_id |> Fn.const () );
+            (* add the current element's keys to the group_keys tbl *)
+            Hashtbl.update group_keys_tbl merge_group_id ~f:(function
+              | None -> failwiths ~here:[%here] "Error: an internal error occured." () [%sexp_of: unit]
+              | Some group_keys -> Set.union group_keys keys ) );
+      groups_tbl
+  end
+
+  module Example1 = Make (struct
+    type t = String.Set.t * int
+
+    module K = String
+
+    let get_keys = fst
+  end)
+
+  let%expect_test "Transitive Closure 1" =
+    [ String.Set.of_list [ "A" ], 1; String.Set.of_list [ "B" ], 2 ]
+    |> Example1.get
+    |> Hashtbl.data
+    |> List.map ~f:Queue.to_list
+    |> printf !"%{sexp: ((String.Set.t * int) list) list}\n";
+    [ String.Set.of_list [ "A" ], 1; String.Set.of_list [ "B" ], 2; String.Set.of_list [ "A"; "B" ], 3 ]
+    |> Example1.get
+    |> Hashtbl.data
+    |> List.map ~f:Queue.to_list
+    |> printf !"%{sexp: ((String.Set.t * int) list) list}\n";
+    [
+      String.Set.of_list [ "A" ], 1;
+      String.Set.of_list [ "B" ], 2;
+      String.Set.of_list [ "A"; "B" ], 3;
+      String.Set.of_list [ "C" ], 4;
+    ]
+    |> Example1.get
+    |> Hashtbl.data
+    |> List.map ~f:Queue.to_list
+    |> printf !"%{sexp: ((String.Set.t * int) list) list}\n";
+    [%expect
+      {|
+      ((((B) 2)) (((A) 1)))
+      ((((A) 1) ((B) 2) ((A B) 3)))
+      ((((C) 4)) (((A) 1) ((B) 2) ((A B) 3))) |}]
 end
