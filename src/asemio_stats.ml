@@ -1090,14 +1090,8 @@ module FFT = struct
             acc + (freq *. z) ) )
 
   let%expect_test "FFT.to_coeffs_slowly" =
-    Complex.Rect.[| 0.0; 1.0; 0.0; 0.0 |]
-    |> to_coeffs_slowly
-    |> Complex.Rect.vector_to_string
-    |> print_endline;
-    Complex.Rect.[| 1.0; 1.0; 0.0; 0.0 |]
-    |> to_coeffs_slowly
-    |> Complex.Rect.vector_to_string
-    |> print_endline;
+    [| 0.0; 1.0; 0.0; 0.0 |] |> to_coeffs_slowly |> Complex.Rect.vector_to_string |> print_endline;
+    [| 1.0; 1.0; 0.0; 0.0 |] |> to_coeffs_slowly |> Complex.Rect.vector_to_string |> print_endline;
     [%expect
       {|
       [(1.0000, 0.0000), (0.0000, -1.0000), (-1.0000, -0.0000), (-0.0000, 1.0000)]
@@ -1389,7 +1383,7 @@ module Perturb = struct
                pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
             .out )
     in
-    let unperturbed_dataset_coeffs = FFT.to_coeffs_slowly unperturbed_dataset in
+    let _unperturbed_dataset_coeffs = FFT.to_coeffs_slowly unperturbed_dataset in
     let perturbed_dataset_coeffs = FFT.to_coeffs_slowly perturbed_dataset in
     let cs_approx = get_unperturbed_dataset_coeffs ~lower ~upper ~std perturbed_dataset_coeffs in
     let approx = FFT.to_data_slowly cs_approx in
