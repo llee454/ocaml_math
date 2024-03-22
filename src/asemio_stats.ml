@@ -1623,15 +1623,18 @@ module Transitive_closure = struct
       (* the group associated with each key that has been seen so far. *)
       let key_group_tbl : (E.K.t, int) Hashtbl.t = Hashtbl.create (module E.K) in
       (* the keys that have been seen so far and are associated with each group that has been seen so far. *)
-      let group_keys_tbl : (int, (E.K.t, E.K.comparator_witness) Set.t) Hashtbl.t =
-        Hashtbl.create (module Int)
-      in
+      let group_keys_tbl : (int, (E.K.t, E.K.comparator_witness) Set.t) Hashtbl.t = Int.Table.create () in
       (* the groups that have been formed so far. *)
-      let groups_tbl : (int, E.t Queue.t) Hashtbl.t = Hashtbl.create (module Int) in
+      let groups_tbl : (int, E.t Queue.t) Hashtbl.t = Int.Table.create () in
       List.iter xs ~f:(fun (x : E.t) ->
           (* find the groups whose keys overlap with the current element *)
           let keys = E.get_keys x in
-          match Set.to_list keys |> List.filter_map ~f:(Hashtbl.find key_group_tbl) with
+          match
+            (* get the group ids for the groups that currently exist and are referenced by the current elements keys *)
+            Set.fold keys ~init:Int.Set.empty ~f:(fun group_ids k ->
+                Hashtbl.find key_group_tbl k |> Option.value_map ~default:group_ids ~f:(Set.add group_ids) )
+            |> Set.to_list
+          with
           | [] ->
             (* none of the groups formed so far overlap with the current element. create a new group and add the element to it. *)
             let group = Queue.singleton x in
