@@ -1630,7 +1630,7 @@ module Transitive_closure = struct
           (* find the groups whose keys overlap with the current element *)
           let keys = E.get_keys x in
           match
-            (* get the group ids for the groups that currently exist and are referenced by the current elements keys *)
+            (* get the set of group ids that are associated with one or more of the current element's keys *)
             Set.fold keys ~init:Int.Set.empty ~f:(fun group_ids k ->
                 Hashtbl.find key_group_tbl k |> Option.value_map ~default:group_ids ~f:(Set.add group_ids) )
             |> Set.to_list
@@ -1647,7 +1647,13 @@ module Transitive_closure = struct
             (* exactly one group formed so far overlaps with the current element. add the element to the group. *)
             let group = Hashtbl.find_exn groups_tbl group_id in
             Queue.enqueue group x;
-            Set.iter keys ~f:(fun key -> Hashtbl.add key_group_tbl ~key ~data:group_id |> Fn.const ());
+            Set.iter keys ~f:(fun key ->
+                Hashtbl.update key_group_tbl key ~f:(function
+                  | None -> group_id
+                  | Some curr_group_id ->
+                    (* there was a key that we failed to updated *)
+                    assert (group_id = curr_group_id);
+                    group_id ) );
             Hashtbl.update group_keys_tbl group_id ~f:(function
               | None -> failwiths ~here:[%here] "Error: an internal error occured." () [%sexp_of: unit]
               | Some group_keys -> Set.union group_keys keys )
