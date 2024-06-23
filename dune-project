@@ -1,21 +1,22 @@
-(lang dune 3.12)
-(name asemio_stats)
+(lang dune 3.16)
+(name ocaml_math)
 (license GPL-3.0)
 (authors "Larry D. Lee Jr. <llee454@gmail.com>")
 (maintainers "Larry D. Lee Jr. <llee454@gmail.com>")
-(source (github llee454/asemio_stats))
+(source (github llee454/ocaml-math))
 (version 1.0.1)
 (generate_opam_files)
 (package
- (name asemio_stats)
- (synopsis "A collection of mathematical and statistical functions used at Asemio.")
+ (name ocaml_math)
+ (synopsis "A collection of mathematical and statistical functions.")
  (description "
-  Asemio Stats is a collection of mathematical and statistical
-  functions used for statistical research and modeling at Asemio. This
+  OCaml Math is a collection of mathematical and statistical
+  functions used for statistical research and modeling. This
   library largely wraps the Gnu Scientific Library (GSL).
   ")
  (depends
   core
+  dune
   ppx_jane
   eio_main
   ppx_profile

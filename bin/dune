@@ -3,10 +3,10 @@
  (libraries
     core
     eio_main
-    asemio_stats
+    ocaml_math
     plplot
   )
-  (preprocess (pps
-    ppx_jane))
+  (link_flags -cclib -lgsl -cclib -lgslcblas)
+  (preprocess (pps ppx_jane))
   (modes exe)
 )

@@ -1,10 +1,10 @@
 (library
-  (name asemio_stats)
-  (public_name asemio_stats)
+  (name ocaml_math)
+  (public_name ocaml_math)
   (libraries core)
   (inline_tests)
   (preprocess (pps ppx_jane ppx_profile))
-  (foreign_stubs (language c) (names asemio_stats)
+  (foreign_stubs (language c) (names ocaml_math)
     (flags -I. -I/usr/local/Cellar/gsl/2.7.1/include/gsl))
   (foreign_archives gslcblas gsl)
 )

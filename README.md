@@ -17,7 +17,7 @@ opam switch create . 5.1.0+options --no-install
 eval $(opam env)
 opam update
 opam upgrade
-dune build asemio_stats.opam # to generate OPAM package file
+dune build ocaml_math.opam # to generate OPAM package file
 opam install --deps-only . -y
 dune build
 dune runtest

@@ -1,20 +1,13 @@
 (library
-  (name asemio_stats)
-  (public_name asemio_stats)
+  (name ocaml_math)
+  (public_name ocaml_math)
   (libraries core)
   (inline_tests)
   (preprocess (pps ppx_jane ppx_profile))
-  (foreign_stubs (language c) (names asemio_stats siman)
-    (flags -I. -I/usr/local/Cellar/gsl/2.7.1/include/gsl))
-  (foreign_archives gslcblas gsl)
-)
-
-(rule
-  (targets libgslcblas.a libgsl.a dllgsl.so dllgslcblas.so)
-  (action (bash "
-    cp /usr/local/Cellar/gsl/2.7.1/lib/libgslcblas.a . \
-    && cp /usr/local/Cellar/gsl/2.7.1/lib/libgsl.a . \
-    && touch dllgsl.so dllgslcblas.so
-  "))
-  (mode standard)
+  (foreign_stubs (language c) (names ocaml_math)
+    (flags -fPIC -I. -I/usr/include/gsl/))
+  ; Note that we do not statically link to GSL and GSL CBLAS. You
+  ; will need to link your executable to these libraries using a Dune
+  ; stanza such as:
+  ; (link_flags -cclib -lgsl -cclib -lgslcblas) 
 )

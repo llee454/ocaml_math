@@ -1,7 +1,7 @@
 open! Core
-open! Asemio_stats
+open! Ocaml_math
 
-(* let () =
+let () =
    Eio_main.run @@ fun env ->
    let stdout = Eio.Stdenv.stdout env in
    (* I. Linear regresion *)
@@ -66,77 +66,4 @@ open! Asemio_stats
      in
      Eio.Flow.copy_string (sprintf "simulated annealing example 2 result: %f\n" result) stdout
    in
-   () *)
-
-let get_cont_fourier_k ~f eps =
-  Complex.Integrate.qagi ~f:(fun x ->
-      Complex.from_polar @@ Complex.Polar.{ r = f x; theta = Float.(-2.0 * pi * eps * x) } )
-
-let test_fn x = Float.(exp (-square x) * sin (2.0 * pi * x / 8.0))
-
-let perturbed_test_fn ~std x =
-  (Integrate.h ~f:(fun x0 -> Float.(test_fn x0 * pdf_normal ~mean:x ~std x0))).out
-
-let get_test_fn_k eps = get_cont_fourier_k ~f:test_fn eps
-
-let get_perturbed_test_fn_k ~std eps = get_cont_fourier_k eps ~f:(perturbed_test_fn ~std)
-
-let get_k_corr ~std eps = Float.(exp (2.0 * square (pi * eps * std)))
-
-let get_est_test_fn_k ~std eps = Complex.Rect.(get_perturbed_test_fn_k ~std eps *. get_k_corr ~std eps)
-
-let test_cont_k_corr stdout =
-  let eps = 0.5
-  and std = 0.3 in
-  let test_fn_k = get_test_fn_k eps
-  and perturbed_test_fn_k = get_perturbed_test_fn_k ~std eps
-  and est_test_fn_k = get_est_test_fn_k ~std eps in
-  Eio.Flow.copy_string
-    (sprintf
-       !"test fn k: %{Complex.Rect.to_string}\n\
-         est test fn k: %{Complex.Rect.to_string}\n\
-         perturbed test fn k: %{Complex.Rect.to_string}\n"
-       test_fn_k est_test_fn_k perturbed_test_fn_k )
-    stdout
-
-(* next question: does the discrete fourier transform approximate the continuous forier transform? *)
-
-let get_delta ~lower ~upper n =
-  if n <= 1
-  then
-    failwiths ~here:[%here] "Error: get_delta failed. Invalid number of data points requested." n
-      [%sexp_of: int];
-  Float.((upper - lower) / (float n - 1.0))
-
-let get_x ~lower ~delta index = Float.((float index * delta) + lower)
-
-let get_test_fn_xs ~lower ~delta n = Array.init n ~f:(fun index -> test_fn @@ get_x ~lower ~delta index)
-
-let test stdout =
-  let lower = -4.0
-  and upper = 4.0
-  and n = 10 in
-  let delta = get_delta ~lower ~upper n in
-  let xs = get_test_fn_xs ~lower ~delta n in
-  let dks = FFT.to_coeffs_slowly xs in
-  Eio.Flow.copy_string
-    (sprintf
-       !"delta: %0.04f\n\
-         xs: %{real_vector_to_string}\n\
-         dk: %{Complex.Rect.to_string}\n\
-         ck: %{Complex.Rect.to_string}\n"
-       delta xs dks.(1)
-       (get_test_fn_k (1 // 8)) )
-    stdout
-
-let () =
-  Eio_main.run @@ fun env ->
-  let stdout = Eio.Stdenv.stdout env in
-  (* I. Linear regresion *)
-  Eio.Switch.run @@ fun sw ->
-  let pool = Eio.Executor_pool.create ~sw (Eio.Stdenv.domain_mgr env) ~domain_count:4 in
-  let () =
-    Eio.Fiber.fork ~sw @@ fun () ->
-    Eio.Executor_pool.submit_exn ~weight:0.1 pool @@ fun () -> test stdout
-  in
-  ()
+   ()
