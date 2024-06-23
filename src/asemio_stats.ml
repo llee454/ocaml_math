@@ -1083,11 +1083,10 @@ module FFT = struct
     let n = Array.length data in
     Array.init n ~f:(fun j ->
         Array.foldi data ~init:zero ~f:(fun k acc z ->
-            let freq =
-              Complex.from_polar
-                Complex.Polar.{ r = 1.0; theta = Float.(-2.0 * pi * of_int j * of_int k / of_int n) }
-            in
-            acc + (freq *. z) ) )
+            acc +
+              (Complex.from_polar
+                Complex.Polar.{ r = z; theta = Float.(-2.0 * pi * of_int j * of_int k / of_int n) })
+            ) )
 
   let%expect_test "FFT.to_coeffs_slowly" =
     [| 0.0; 1.0; 0.0; 0.0 |] |> to_coeffs_slowly |> Complex.Rect.vector_to_string |> print_endline;
@@ -1596,7 +1595,7 @@ module Transitive_closure = struct
   (** represents the type of elements that will be grouped together *)
   module type Element = sig
     type t
-  (**
+    (**
       Represents the keys that elements have. These will be used to
       determine if two elements "overlap" and should be grouped together.
     *)
@@ -1611,7 +1610,7 @@ module Transitive_closure = struct
   end
 
   module Make (E : Element) = struct
-    module ETable = Hashtbl.Make (E.K)
+    module KTable = Hashtbl.Make (E.K)
 
     type t = E.t
     (** Accepts a list of elements and returns their transitive closure. *)
@@ -1624,7 +1623,7 @@ module Transitive_closure = struct
           incr next_group_id;
           x
       in
-      let key_group_tbl : int ETable.t = ETable.create () in
+      let key_group_tbl : int KTable.t = KTable.create () in
       let group_keys_tbl :  E.Set.t Int.Table.t = Int.Table.create () in
       let group_records_tbl : E.t list Int.Table.t = Int.Table.create () in
 
@@ -1659,7 +1658,7 @@ module Transitive_closure = struct
           let keys = E.get_keys x in
           let group_ids =
             Set.fold keys ~init:Int.Set.empty ~f:(fun group_ids k ->
-                Hashtbl.find_and_call ~if_found:(Set.add group_ids) ~if_not_found:(fun (_ : ETable.key) -> group_ids)
+                Hashtbl.find_and_call ~if_found:(Set.add group_ids) ~if_not_found:(fun (_ : KTable.key) -> group_ids)
                   key_group_tbl k )
             |> Set.to_sequence
           in
