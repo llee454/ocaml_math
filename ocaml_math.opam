@@ -11,8 +11,8 @@ description: """
 maintainer: ["Larry D. Lee Jr. <llee454@gmail.com>"]
 authors: ["Larry D. Lee Jr. <llee454@gmail.com>"]
 license: "GPL-3.0"
-homepage: "https://github.com/llee454/ocaml-math"
-bug-reports: "https://github.com/llee454/ocaml-math/issues"
+homepage: "https://github.com/llee454/ocaml_math"
+bug-reports: "https://github.com/llee454/ocaml_math/issues"
 depends: [
   "core"
   "dune" {>= "3.16"}
@@ -37,7 +37,7 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/llee454/ocaml-math.git"
+dev-repo: "git+https://github.com/llee454/ocaml_math.git"
 pin-depends: [
  ["ppx_profile.1.0.0" "git+https://github.com/llee454/ppx_profile.git#main"]
 ]
