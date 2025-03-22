@@ -9,5 +9,5 @@
   ; Note that we do not statically link to GSL and GSL CBLAS. You
   ; will need to link your executable to these libraries using a Dune
   ; stanza such as:
-  ; (link_flags -cclib -lgsl -cclib -lgslcblas) 
+  (c_library_flags -fPIC -I. -I/usr/include/gsl/ -lgsl -lgslcblas)
 )
