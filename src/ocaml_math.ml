@@ -457,43 +457,70 @@ module Integrate = struct
     neval: int64;
   }
 
-  external ocaml_integrate : f:(float -> float) -> lower:float -> upper:float -> t = "ocaml_integrate"
+  module QNG_params = struct
+    type t = {
+      epsabs: float;
+      epsrel: float;
+    }
+    [@@deriving sexp]
+  end
 
-  let f = ocaml_integrate
+  module QAG_params = struct
+    type t = {
+      epsabs: float;
+      epsrel: float;
+      limit: int;
+    }
+    [@@deriving sexp]
+  end
 
-  let%expect_test "Integrate.f_1" =
+  external integration_qng : params:QNG_params.t -> f:(float -> float) -> lower:float -> upper:float -> t
+    = "ocaml_integration_qng"
+
+  let qng ?(params : QNG_params.t = QNG_params.{ epsabs = 1e-6; epsrel = 0.0 }) ~f ~lower ~upper () =
+    integration_qng ~params ~f ~lower ~upper
+
+  let%expect_test "Integrate.qng" =
     let { out; _ } =
-      f ~lower:(-1.0) ~upper:1.0 ~f:Float.((fun x -> exp ~-(square x /. 2.0) /. (2.0 *. sqrt_pi)))
+      qng ~lower:(-1.0) ~upper:1.0 ~f:Float.((fun x -> exp ~-(square x /. 2.0) /. (2.0 *. sqrt_pi))) ()
     in
     printf "%.4f" out;
     [%expect {|0.4827|}]
 
-  external integration_qag : f:(float -> float) -> lower:float -> upper:float -> t
+  external integration_qag : params:QAG_params.t -> f:(float -> float) -> lower:float -> upper:float -> t
     = "ocaml_integration_qag"
 
-  let g = integration_qag
+  let qag ?(params : QAG_params.t = QAG_params.{ epsabs = 1e-6; epsrel = 0.0; limit = 10_000 }) ~f ~lower
+    ~upper () =
+    integration_qag ~params ~f ~lower ~upper
 
-  let%expect_test "Integrate.g_1" =
+  let%expect_test "Integrate.gag" =
     let { out; _ } =
-      g ~lower:(-1.0) ~upper:1.0 ~f:Float.((fun x -> exp ~-(square x /. 2.0) /. (2.0 *. sqrt_pi)))
+      qag ~lower:(-1.0) ~upper:1.0 ~f:Float.((fun x -> exp ~-(square x /. 2.0) /. (2.0 *. sqrt_pi))) ()
     in
     printf "%.4f" out;
     [%expect {|0.4827|}]
 
-  external integration_qagi : f:(float -> float) -> t = "ocaml_integration_qagi"
+  external integration_qagi : params:QAG_params.t -> f:(float -> float) -> t = "ocaml_integration_qagi"
 
-  let h = integration_qagi
+  let qagi ?(params : QAG_params.t = QAG_params.{ epsabs = 1e-6; epsrel = 0.0; limit = 10_000 }) ~f () = integration_qagi ~params ~f
 
-  let%expect_test "Integrate.h_1" =
-    let { out; _ } = h ~f:Float.((fun x -> 2.0 ** ~-(square x))) in
+  let%expect_test "Integrate.qagi" =
+    let { out; _ } = qagi () ~f:Float.((fun x -> 2.0 ** ~-(square x))) in
     printf "%.8f" out;
-    [%expect {|2.12893404|}]
+    [%expect {| 2.12893307 |}]
 
   external integration_qagp :
-    f:(float -> float) -> lower:float -> upper:float -> singularities:float array -> t
-    = "ocaml_integration_qagp"
+    params:QAG_params.t ->
+    f:(float -> float) ->
+    lower:float ->
+    upper:float ->
+    singularities:float array ->
+    t = "ocaml_integration_qagp"
 
-  let qagp = integration_qagp
+  let qagp ?(params : QAG_params.t = QAG_params.{ epsabs = 1e-6; epsrel = 0.0; limit = 10_000 }) ~f ~lower
+    ~upper ~singularities () =
+    integration_qagp ~params ~f ~lower ~upper ~singularities
 end
 
 module Complex = struct
@@ -664,22 +691,22 @@ module Complex = struct
     let qag ~lower ~upper ~f =
       Rect.
         {
-          real = (Integrate.integration_qag ~lower ~upper ~f:(fun x -> (f x).real)).out;
-          imag = (Integrate.integration_qag ~lower ~upper ~f:(fun x -> (f x).imag)).out;
+          real = (Integrate.qag () ~lower ~upper ~f:(fun x -> (f x).real)).out;
+          imag = (Integrate.qag () ~lower ~upper ~f:(fun x -> (f x).imag)).out;
         }
 
     let qagi ~f =
       Rect.
         {
-          real = (Integrate.integration_qagi ~f:(fun x -> (f x).real)).out;
-          imag = (Integrate.integration_qagi ~f:(fun x -> (f x).imag)).out;
+          real = (Integrate.qagi () ~f:(fun x -> (f x).real)).out;
+          imag = (Integrate.qagi () ~f:(fun x -> (f x).imag)).out;
         }
 
     let qagp ~lower ~upper ~singularities ~f =
       Rect.
         {
-          real = (Integrate.integration_qagp ~lower ~upper ~singularities ~f:(fun x -> (f x).real)).out;
-          imag = (Integrate.integration_qagp ~lower ~upper ~singularities ~f:(fun x -> (f x).imag)).out;
+          real = (Integrate.qagp () ~lower ~upper ~singularities ~f:(fun x -> (f x).real)).out;
+          imag = (Integrate.qagp () ~lower ~upper ~singularities ~f:(fun x -> (f x).imag)).out;
         }
   end
 end
@@ -797,7 +824,7 @@ module Stats_tests = struct
     let lower, upper = -6.0, 6.0 in
     (* NOTE: the tests fail when these bounds are expanded. *)
     let Integrate.{ out; _ } =
-      Integrate.g ~lower ~upper ~f:(fun x ->
+      Integrate.qag () ~lower ~upper ~f:(fun x ->
           let p = 1.0 -. Erf.q x in
           float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x )
     in
@@ -980,38 +1007,20 @@ end
 (**
   A demonstration of how to use the simulated annealing function.
 
-  This example fits the following function to the given set of data points:
-             1
-     f(x) = ----
-             x/k
-            e
-  in this case k should converge toward 2.0 (within a small).
+  let module SA = Simulated_annealing (struct
+    type t = float
 
-  let open Float in
-  let f ~k x = if [%equal: float] k 0.0 then 0.0 else 1.0 / exp (x / k) in
-  let data = [| 1.0; 0.6065; 0.3678; 0.2231; 0.1353 |] in
-  let { k } =
-    let params =
-      Gsl.Simulated_annealing.f
-        {
-          copy = (fun params ->
-            let { k } = !params in
-            ref { k });
-          energy = (fun params ->
-            let { k } = !params in
-            Gsl.sumi data ~f = (fun i y -> Gsl.pow_int (f ~k (float i) - y) 2));
-          step = (fun params delta ->
-            let { k } = !params in
-            params  = = { k = k + delta });
-          dist = (fun params0 params1 ->
-            let { k = k0 } = !params0 in
-            let { k = k1 } = !params1 in
-            Float.abs (k0 - k1));
-          print = (fun _ -> ());
-          init = (ref { k = 1.0 });
-        }
-    in
-    !params
+    let copy x = x
+
+    let energy x = (x +. 3.0) *. (x +. 7.0)
+
+    let step x dist = x +. Random.float (2.0 *. dist) -. dist
+
+    let dist x y = Float.abs (x -. y)
+
+    let print = None
+  end) in
+  SA.(f ~num_iters:1_000 ~step_size:1.0 (create_state (-3.0)))
 *)
 module Simulated_annealing (M : Simulated_annealing_arg) = struct
   type intf = {
@@ -1327,7 +1336,7 @@ module Perturb = struct
     in
     let perturbed_dataset =
       get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-          (Integrate.integration_qagi ~f:(fun x ->
+          (Integrate.qagi () ~f:(fun x ->
                pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
             .out )
     in
@@ -1379,7 +1388,7 @@ module Perturb = struct
     in
     let perturbed_dataset =
       get_sample_data ~lower ~upper ~num_pts (fun x0 ->
-          (Integrate.integration_qagi ~f:(fun x ->
+          (Integrate.qagi () ~f:(fun x ->
                pdf_normal ~mean:0.0 ~std:5.0 x * pdf_normal ~mean:x ~std x0 ) )
             .out )
     in
@@ -1767,4 +1776,50 @@ module Route = struct
     in
     let len, path = aux 0.0 start (List.singleton start) in
     len, List.rev path
+end
+
+(**
+  This module defines functions for working with orthogonal functions. In
+  particular, it defines functions that can be used to project a function
+  onto an orthogonal bases such as Legendre, Hermite, Laguerre, and Chebyshev
+  polynomials.
+*)
+module Orthogonal_functions = struct
+  module Range = struct
+    type t = {
+      lower: float;
+      upper: float;
+      singularities: float array;
+    }
+  end
+
+  let inner_product Range.{ lower; upper; singularities } f g =
+    let res = Integrate.qagp () ~lower ~upper ~singularities ~f:(fun x -> f x *. g x) in
+    res.out
+
+  let length range f = sqrt @@ inner_product range f f
+
+  let projection range bases f = Array.map bases ~f:(fun u -> inner_product range f u /. length range u)
+
+  module Fourier_series = struct
+    (**
+      Accepts two arguments: [range] and [n]; and returns the basis functions
+      for computing a fourier series approximation over the given range using
+      [n+1] terms.
+    *)
+    let bases range n =
+      let open Float in
+      let range_width = Range.(range.upper - range.lower) in
+      let range_middle = Range.(range.lower + (range_width / 2.0)) in
+      Sequence.append
+        (Sequence.singleton (Fn.const 1.0))
+        (Sequence.concat
+           (Sequence.init n ~f:(fun i ->
+                let m = float i + 1.0 in
+                Sequence.append
+                  (Sequence.singleton (fun x -> cos (2.0 * pi * (x - range_middle) * m / range_width)))
+                  (Sequence.singleton (fun x -> sin (2.0 * pi * (x - range_middle) * m / range_width))) )
+           ) )
+      |> Sequence.to_array
+  end
 end

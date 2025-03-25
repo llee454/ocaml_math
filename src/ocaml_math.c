@@ -370,8 +370,8 @@ double callback (double x, void* params) {
   CAMLreturnT (double, Double_val (result));
 }
 
-CAMLprim value ocaml_integrate (value f, value lower, value upper) {
-  CAMLparam3 (f, lower, upper);
+CAMLprim value ocaml_integration_qng (value int_params, value f, value lower, value upper) {
+  CAMLparam4 (int_params, f, lower, upper);
   CAMLlocal2 (result, aux);
   double out;
   double err;
@@ -383,7 +383,11 @@ CAMLprim value ocaml_integrate (value f, value lower, value upper) {
     .function = &callback,
     .params   = &params
   };
-  int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), 0.0001, 0, &out, &err, &neval);
+
+  double epsabs = Double_array_field (int_params, 0);
+  double epsrel = Double_array_field (int_params, 1);
+
+  int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), epsabs, epsrel, &out, &err, &neval);
   result = caml_alloc (3, 0);
 
   aux = caml_copy_double (out);
@@ -395,12 +399,14 @@ CAMLprim value ocaml_integrate (value f, value lower, value upper) {
   CAMLreturn (result);
 }
 
-CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
-  CAMLparam3 (f, lower, upper);
+CAMLprim value ocaml_integration_qag (value int_params, value f, value lower, value upper) {
+  CAMLparam4 (int_params, f, lower, upper);
   CAMLlocal2 (result, aux);
   double out;
   double err;
-  size_t limit = 100;
+  double epsabs = Field (int_params, 0);
+  double epsrel = Field (int_params, 1);
+  size_t limit  = Field (int_params, 2);
 
   struct callback_params* params = malloc (sizeof (struct callback_params));
   params->h = f;
@@ -411,7 +417,7 @@ CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
   F->params   = params;
 
   gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
-  int status =  gsl_integration_qag (F, Double_val (lower), Double_val (upper), 0.0001, 0, limit, GSL_INTEG_GAUSS61, w, &out, &err);
+  int status =  gsl_integration_qag (F, Double_val (lower), Double_val (upper), epsabs, epsrel, limit, GSL_INTEG_GAUSS61, w, &out, &err);
   gsl_integration_workspace_free (w);
   result = caml_alloc (3, 0);
 
@@ -428,12 +434,14 @@ CAMLprim value ocaml_integration_qag (value f, value lower, value upper) {
   CAMLreturn (result);
 }
 
-CAMLprim value ocaml_integration_qagp (value f, value lower, value upper, value singularities) {
-  CAMLparam4 (f, lower, upper, singularities);
+CAMLprim value ocaml_integration_qagp (value int_params, value f, value lower, value upper, value singularities) {
+  CAMLparam5 (int_params, f, lower, upper, singularities);
   CAMLlocal2 (result, aux);
   double out;
   double err;
-  size_t limit = 100;
+  double epsabs = Field (int_params, 0);
+  double epsrel = Field (int_params, 1);
+  size_t limit  = Field (int_params, 2);
 
   struct callback_params* params = malloc (sizeof (struct callback_params));
   params->h = f;
@@ -451,7 +459,7 @@ CAMLprim value ocaml_integration_qagp (value f, value lower, value upper, value 
     ps [i] = Double_field (singularities, i);
   }
   gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
-  int status =  gsl_integration_qagp (F, ps, n, 0.0001, 0, limit, w, &out, &err);
+  int status =  gsl_integration_qagp (F, ps, n, epsrel, epsabs, limit, w, &out, &err);
   gsl_integration_workspace_free (w);
   result = caml_alloc (3, 0);
 
@@ -469,12 +477,14 @@ CAMLprim value ocaml_integration_qagp (value f, value lower, value upper, value 
   CAMLreturn (result);
 }
 
-CAMLprim value ocaml_integration_qagi (value f) {
-  CAMLparam1 (f);
+CAMLprim value ocaml_integration_qagi (value int_params, value f) {
+  CAMLparam2 (int_params, f);
   CAMLlocal2 (result, aux);
   double out;
   double err;
-  size_t limit = 100;
+  double epsabs = Field (int_params, 0);
+  double epsrel = Field (int_params, 1);
+  size_t limit  = Field (int_params, 2);
 
   struct callback_params* params = malloc (sizeof (struct callback_params));
   params->h = f;
@@ -485,7 +495,7 @@ CAMLprim value ocaml_integration_qagi (value f) {
   F->params   = params;
 
   gsl_integration_workspace* w = gsl_integration_workspace_alloc (limit);
-  int status =  gsl_integration_qagi (F, 0.0001, 0, limit, w, &out, &err);
+  int status =  gsl_integration_qagi (F, epsrel, epsabs, limit, w, &out, &err);
   result = caml_alloc (3, 0);
 
   aux = caml_copy_double (out);
