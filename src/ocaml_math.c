@@ -376,18 +376,18 @@ CAMLprim value ocaml_integration_qng (value int_params, value f, value lower, va
   double out;
   double err;
   size_t neval;
-  struct callback_params params = {
-    .h = f
-  };
-  gsl_function F = {
-    .function = &callback,
-    .params   = &params
-  };
-
   double epsabs = Double_array_field (int_params, 0);
   double epsrel = Double_array_field (int_params, 1);
 
-  int status = gsl_integration_qng (&F, Double_val (lower), Double_val (upper), epsabs, epsrel, &out, &err, &neval);
+  struct callback_params* params = malloc (sizeof (struct callback_params));
+  params->h = f;
+  caml_register_global_root (&params->h);
+
+  gsl_function* F = malloc (sizeof (gsl_function));
+  F->function = &callback;
+  F->params   = params;
+
+  int status = gsl_integration_qng (F, Double_val (lower), Double_val (upper), epsabs, epsrel, &out, &err, &neval);
   result = caml_alloc (3, 0);
 
   aux = caml_copy_double (out);
@@ -395,6 +395,10 @@ CAMLprim value ocaml_integration_qng (value int_params, value f, value lower, va
   aux = caml_copy_double (err);
   Store_field (result, 1, aux);
   Store_field (result, 2, Val_long (neval));
+
+  caml_remove_global_root (&params->h);
+  free (params);
+  free (F);
 
   CAMLreturn (result);
 }
