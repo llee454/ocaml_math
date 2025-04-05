@@ -20,6 +20,7 @@
 #include <gsl_eigen.h> // gsl_eigen_symmv
 #include <gsl_blas.h> // gsl_blas_dgemm
 #include <gsl_linalg.h>
+#include <gsl_poly.h>
 
 #include <ocaml_siman.h>
 #include <ocaml_nonlinear_fit.h>
@@ -30,6 +31,43 @@
 CAMLprim value ocaml_gsl_pow_int (value x, value n) {
   CAMLparam2 (x, n);
   CAMLreturn (caml_copy_double (gsl_pow_int (Double_val (x), Int_val (n))));
+}
+
+CAMLprim value ocaml_gsl_poly_solve_quadratic (value a, value b, value c) {
+  CAMLparam3 (a, b, c);
+  CAMLlocal1 (result);
+  double x0, x1;
+
+  int num_roots = gsl_poly_solve_quadratic (
+    Double_val (a),
+    Double_val (b),
+    Double_val (c),
+    &x0, &x1
+  );
+  result = caml_alloc (3, 0);
+  Store_field (result, 0, Val_int (num_roots));
+  Store_field (result, 1, caml_copy_double (x0));
+  Store_field (result, 2, caml_copy_double (x1));
+  CAMLreturn (result);
+}
+
+CAMLprim value ocaml_gsl_poly_solve_cubic (value a, value b, value c) {
+  CAMLparam3 (a, b, c);
+  CAMLlocal1 (result);
+  double x0, x1, x2;
+
+  int num_roots = gsl_poly_solve_cubic (
+    Double_val (a),
+    Double_val (b),
+    Double_val (c),
+    &x0, &x1, &x2
+  );
+  result = caml_alloc (4, 0);
+  Store_field (result, 0, Val_int (num_roots));
+  Store_field (result, 1, caml_copy_double (x0));
+  Store_field (result, 2, caml_copy_double (x1));
+  Store_field (result, 3, caml_copy_double (x2));
+  CAMLreturn (result);
 }
 
 CAMLprim value ocaml_mean (value xs) {
