@@ -4,7 +4,7 @@
 (authors "Larry D. Lee Jr. <llee454@gmail.com>")
 (maintainers "Larry D. Lee Jr. <llee454@gmail.com>")
 (source (github llee454/ocaml_math))
-(version 2.0.0)
+(version 2.1.0)
 (generate_opam_files)
 (package
  (name ocaml_math)
