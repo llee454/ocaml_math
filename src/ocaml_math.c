@@ -94,6 +94,11 @@ CAMLprim value ocaml_gsl_stats_variance (value xs) {
   CAMLreturn (caml_copy_double (res));
 }
 
+CAMLprim value ocaml_gsl_sf_erf (value x) {
+  CAMLparam1 (x);
+  CAMLreturn (caml_copy_double (gsl_sf_erf (Double_val (x))));
+}
+
 CAMLprim value ocaml_gsl_sf_erf_Z (value x) {
   CAMLparam1 (x);
   CAMLreturn (caml_copy_double (gsl_sf_erf_Z (Double_val (x))));
@@ -112,6 +117,11 @@ CAMLprim value ocaml_gsl_sf_fact (value x) {
 CAMLprim value ocaml_gsl_sf_gamma (value x) {
   CAMLparam1 (x);
   CAMLreturn (caml_copy_double (gsl_sf_gamma ((Double_val (x)))));
+}
+
+CAMLprim value ocaml_gsl_sf_choose (value n, value k) {
+  CAMLparam2 (n, k);
+  CAMLreturn (caml_copy_double (gsl_sf_choose (Int_val (n), Int_val (k))));
 }
 
 CAMLprim value ocaml_matrix_mult (value xs, value ys) {

@@ -98,6 +98,15 @@ end
 
 external gamma : float -> float = "ocaml_gsl_sf_gamma"
 
+external binomial : n:int -> int -> float = "ocaml_gsl_sf_choose"
+
+let%expect_test "binomial" =
+  [(0, 0); (3, 0); (3, 1); (11, 5); (233, 170)]
+  |> List.map ~f:(fun (n, k) -> binomial ~n k)
+  |> printf !"%{sexp: float list}";
+  [%expect {| (1 1 3 462 6.7331706101512676E+57) |}]
+  
+
 type vector = float array [@@deriving compare, equal, sexp]
 
 type matrix = float array array [@@deriving compare, equal, sexp]
@@ -490,9 +499,15 @@ module Linear_fit = struct
 end
 
 module Erf = struct
-  external f : float -> float = "ocaml_gsl_sf_erf_Z"
+  external f : float -> float = "ocaml_gsl_sf_erf"
 
-  external q : float -> float = "ocaml_gsl_sf_erf_Q"
+  let%expect_test "Erf.f" =
+    printf "%f" (f 2.3);
+    [%expect {| 0.998857 |}]
+
+  external erf_z : float -> float = "ocaml_gsl_sf_erf_Z"
+
+  external erf_q : float -> float = "ocaml_gsl_sf_erf_Q"
 end
 
 module Integrate = struct
@@ -639,10 +654,11 @@ module Complex = struct
       |> printf !"%{sexp: t array array}";
       [%expect
         {|
-        ((((real -0.49999999999999978) (imag 0.43749999999999978))
-          ((real 0.24999999999999989) (imag -0.18749999999999994)))
-         (((real 0.37499999999999983) (imag -0.31249999999999983))
-          ((real -0.12499999999999993) (imag 0.062499999999999958)))) |}]
+        ((((real -0.49999999999999989) (imag 0.43749999999999994))
+          ((real 0.24999999999999994) (imag -0.18750000000000003)))
+         (((real 0.37500000000000006) (imag -0.31250000000000006))
+          ((real -0.12500000000000003) (imag 0.062500000000000028))))
+        |}]
 
     external matrix_det : t array array -> t = "ocaml_gsl_matrix_complex_det"
 
@@ -848,13 +864,6 @@ module Stats_tests = struct
     values in a random sample of n values drawn from a Gaussian
     distribution with mean 0 and standard deviation 1.
 
-    Note: this function uses a numerical approximation to the exact
-    formula as given in [1].
-
-    k * 'integrate (
-      x/(1 - cdf (x)) * B_pdf (n, r, 1 - cdf (x)) * pdf (x),
-      x);
-
     References:
     1. [Algorithm AS 177: Expected Normal Order Statistics (Exact and Approximate)](https://www.jstor.org/stable/2347982 )
     2. D. Teichroew, et. al. "Tables of Expected Values of Order
@@ -866,14 +875,10 @@ module Stats_tests = struct
     3. [Exptected Values of Normal Order Statistics](http://faculty.washington.edu/heagerty/Books/Biostatistics/TABLES/NormalOrder.pdf)
   *)
   let order_stat ~r ~n : float =
-    let lower, upper = -6.0, 6.0 in
-    (* NOTE: the tests fail when these bounds are expanded. *)
-    let Integrate.{ out; _ } =
-      Integrate.qag () ~lower ~upper ~f:(fun x ->
-          let p = 1.0 -. Erf.q x in
-          float r *. x /. p *. pdf_binomial ~k:r ~p ~n *. Erf.f x )
-    in
-    out
+    let open Float in
+    float r * binomial ~n r * (Integrate.qagi () ~f:(fun x ->
+      x * pow_int (1.0 - Erf.erf_q x) Int.(r - 1) * pow_int (Erf.erf_q x) Int.(n - r) * pdf_normal ~mean:0.0 ~std:1.0 x)
+    ).out
 
   let%expect_test "order_stat_1" =
     printf "%.4f" (order_stat ~r:8 ~n:10);
