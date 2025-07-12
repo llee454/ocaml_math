@@ -516,6 +516,7 @@ module Integrate = struct
     err: float;
     neval: int64;
   }
+  [@@deriving sexp]
 
   module QNG_params = struct
     type t = {
