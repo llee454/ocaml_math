@@ -1,6 +1,6 @@
-(lang dune 3.16)
+(lang dune 3.20)
 (name ocaml_math)
-(license GPL-3.0)
+(license GPL-3.0-or-later)
 (authors "Larry D. Lee Jr. <llee454@gmail.com>")
 (maintainers "Larry D. Lee Jr. <llee454@gmail.com>")
 (source (github llee454/ocaml_math))
@@ -8,7 +8,7 @@
 (generate_opam_files)
 (package
  (name ocaml_math)
- (synopsis "A collection of mathematical and statistical functions.")
+ (synopsis "A collection of mathematical and statistical functions")
  (description "
   OCaml Math is a collection of mathematical and statistical
   functions used for statistical research and modeling. This
@@ -19,7 +19,6 @@
   dune
   ppx_jane
   eio_main
-  ppx_profile
   conf-gsl
   plplot
  )

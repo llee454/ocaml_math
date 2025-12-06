@@ -13,7 +13,7 @@ Initializing the Build Environment
 You will need to install the GSL library as a shared object library (`apt install libgsl-dev`).
 
 ```bash
-opam switch create . 5.1.0+options --no-install
+opam switch create . 5.3.0+options --no-install
 eval $(opam env)
 opam update
 opam upgrade

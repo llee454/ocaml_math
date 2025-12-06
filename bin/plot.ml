@@ -57,6 +57,15 @@ let plot ~filename ~title ~x_axis ~y_axis ~f =
   plline xs ys;
   plend ()
 
+let plot_hist ~filename ~title ~x_axis ~y_axis ~num_bins ~xs =
+  let Range.{ min = x_min; max = x_max } =
+    Axis.range x_axis |> Option.value ~default:(Range.of_vals [||])
+  in
+  init filename;
+  plhist xs x_min x_max num_bins [PL_HIST_DEFAULT];
+  pllab (Axis.label x_axis) (Axis.label y_axis) title;
+  plend ()
+
 let plot_points ~filename ~ps ~x_axis ~y_axis ~title =
   let n = Array.length ps in
   let xs = Array.init n ~f:(fun i -> ps.(i).(0)) in

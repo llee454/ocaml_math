@@ -289,10 +289,18 @@ CAMLprim value ocaml_gsl_cdf_binomial_cdf (value k, value p, value n) {
 
 CAMLprim value ocaml_gsl_ran_gamma_pdf (value a, value b, value x) {
   CAMLparam3 (a, b, x);
-   CAMLreturn (caml_copy_double (gsl_ran_gamma_pdf (
-     Double_val (x),
-     Double_val (a),
-     Double_val (b))));
+  CAMLreturn (caml_copy_double (gsl_ran_gamma_pdf (
+    Double_val (x),
+    Double_val (a),
+    Double_val (b))));
+}
+
+CAMLprim value ocaml_gsl_cdf_beta_P (value a, value b, value x) {
+  CAMLparam3 (a, b, x);
+  CAMLreturn (caml_copy_double (gsl_cdf_beta_P (
+    Double_val (x),
+    Double_val (a),
+    Double_val (b))));
 }
 
 CAMLprim value ocaml_gsl_stats_covariance (value xs, value ys) {
