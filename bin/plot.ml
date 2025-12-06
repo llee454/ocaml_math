@@ -1,6 +1,4 @@
 open! Core
-open! Lwt.Syntax
-open! Lwt.Infix
 open! Plplot
 
 module Range = struct
