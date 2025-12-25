@@ -79,6 +79,15 @@ let%expect_test "create_random_vector" =
   printf !"%{sexp: float array} %f %d" v (vector_norm v) (Array.length v);
   [%expect {| (0.65236902224161786 1.3618415123765957 1.3114123508596915) 2.000000 3 |}]
 
+(** Returns a random vector of dimension [dim] and length less than [len]. *)
+let create_random_vector_lt ?(len = 1.0) dim =
+  create_random_vector ~len dim |> vector_scalar_mult (Random.float 1.0)
+
+let%expect_test "create_random_vector_lt" =
+  let v = create_random_vector_lt ~len:5.0 3 in
+  printf !"%{sexp: float array} %f %d" v (vector_norm v) (Array.length v);
+  [%expect {| (0.79451237416556775 1.658570374046388 1.5971533056725697) 2.435776 3 |}]
+
 let get_mean_vector vectors =
   let (n, xs) = Array.fold vectors ~init:(0, None) ~f:(fun (n, acc_opt) vector ->
     (succ n, Some (Option.value_map acc_opt ~default:vector ~f:(vector_add vector)))

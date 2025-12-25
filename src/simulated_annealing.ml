@@ -45,6 +45,14 @@ module Simulated_annealing (M : Simulated_annealing_arg) = struct
     intf: intf;
     value: M.t;
   }
+  
+  type params = {
+    n_tries: int;
+    k: float; (** Boltzmann constant *)
+    t_initial: float; (** initial temperature *)
+    mu_t: float; (** rate of cooling > 1 *)
+    t_min: float (** minimum temperature *)
+  } [@@deriving sexp]
 
   let copy (x : t) : t = { x with value = M.copy x.value }
 
@@ -58,7 +66,7 @@ module Simulated_annealing (M : Simulated_annealing_arg) = struct
 
   let create_state (value : M.t) : t = { intf = { copy; energy; step; dist; print }; value }
 
-  external simulated_annealing : num_iters:int -> step_size:float -> t -> M.t = "ocaml_siman_solve"
+  external simulated_annealing : ?params:params -> num_iters:int -> step_size:float -> t -> M.t = "ocaml_siman_solve"
 
   let f = simulated_annealing
 end

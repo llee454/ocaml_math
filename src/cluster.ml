@@ -90,14 +90,14 @@ let get_cluster_variances (points : vector array) (clusters : vector array) =
 let get_clusters ?(num_iters = 1_000) dim (points : vector array) (num_clusters : Int.t) =
   let radius = get_diameter points /. 2.0 in
   let points_mean = get_mean_vector points |> Option.value_exn ~here:[%here] ~message:"Error: you must give at least one data point." in
-  let init_clusters = Array.init num_clusters ~f:(fun _ -> create_random_vector ~len:radius dim |> vector_add points_mean) in
+  let init_clusters = Array.init num_clusters ~f:(fun _ -> create_random_vector_lt ~len:radius dim |> vector_add points_mean) in
   let module M = Simulated_annealing (struct
     type t = vector array
     let copy clusters = Array.copy clusters
     let energy clusters = 
       get_cluster_variances points clusters |> mean
     let step clusters dist =
-      let deltas = create_random_vector ~len:dist num_clusters
+      let deltas = create_random_vector_lt ~len:dist num_clusters
         |> Array.map ~f:(fun len -> create_random_vector ~len 3)
       in
       Array.mapi clusters ~f:(fun i cluster ->
@@ -109,4 +109,20 @@ let get_clusters ?(num_iters = 1_000) dim (points : vector array) (num_clusters 
       ) |> Float.sqrt
     let print = None
   end) in
-  M.f ~num_iters ~step_size:radius (M.create_state init_clusters)
+  (* the energy needed to jump from the mean to the radius *)
+  let center_jump_energy = get_sum_sqr_dists points points_mean
+  and t_min = 1e-6 in
+  let params = M.{
+    n_tries = 10;
+    k = 1.0;
+    (* we want the initial probability of jumping from the center to the radius
+      (assuming that this would zero the energy to be e^-1 *)
+    t_initial = center_jump_energy;
+    (* we set the cooling rate to bring the initial temperature down to the
+      minimum temperature in the given number of steps. *)
+    mu_t = exp (-. (1//num_iters)*.(log t_min -. log center_jump_energy));
+    t_min
+  } in
+  printf !"params %{sexp: M.params}\n" params;
+  flush stdout;
+  M.f ~params ~num_iters ~step_size:radius (M.create_state init_clusters)

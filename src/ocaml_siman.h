@@ -44,8 +44,8 @@ void ocaml_siman_print (value* xp) {
   CAMLreturn0;
 }
 
-CAMLprim value ocaml_siman_solve (value num_iters, value step_size, value state) {
-  CAMLparam3 (num_iters, step_size, state);
+CAMLprim value ocaml_siman_solve (value params, value num_iters, value step_size, value state) {
+  CAMLparam4 (params, num_iters, step_size, state);
   CAMLlocal1 (res);
 
   value* init = malloc (sizeof (value*));
@@ -55,14 +55,14 @@ CAMLprim value ocaml_siman_solve (value num_iters, value step_size, value state)
   gsl_rng_env_setup ();
   gsl_rng* rng = gsl_rng_alloc (gsl_rng_default);
 
-  gsl_siman_params_t params = {
-    .n_tries = 200, // 200
+  gsl_siman_params_t gsl_params = {
+    .n_tries       = Is_some (params) ? Int_val (Field (Field (params, 0), 0)) : 200,
     .iters_fixed_T = Int_val (num_iters), // 1000
-    .step_size = Double_val (step_size), // 1
-    .k = 1.0, // Boltzman constant
-    .t_initial = 0.008, // initial temperature
-    .mu_t = 1.003,
-    .t_min = 2.0e-6 // minimum temperature
+    .step_size     = Double_val (step_size), // 1
+    .k             = Is_some (params) ? Double_val (Field (Field (params, 0), 1)) : 1.0, // Boltzmann constant
+    .t_initial     = Is_some (params) ? Double_val (Field (Field (params, 0), 2)): 0.008, // initial temperature
+    .mu_t          = Is_some (params) ? Double_val (Field (Field (params, 0), 3)) : 1.003,
+    .t_min         = Is_some (params) ? Double_val (Field (Field (params, 0), 4)) : 2.0e-6 // minimum temperature
   };
 
   gsl_siman_print_t printer = NULL;
@@ -81,7 +81,7 @@ CAMLprim value ocaml_siman_solve (value num_iters, value step_size, value state)
     (gsl_siman_copy_construct_t) ocaml_siman_copy,
     (gsl_siman_destroy_t) ocaml_siman_destroy,
     0, // element size - signal variable.
-    params
+    gsl_params
   );
   gsl_rng_free (rng);
 
