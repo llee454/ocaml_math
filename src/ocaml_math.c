@@ -343,7 +343,7 @@ CAMLprim value ocaml_gsl_eigen_symmv (value m) {
   const size_t nrows = Wosize_val (m);
   const size_t ncols = nrows > 0 ? Wosize_val (Field (m, 0)) : 0;
   if (nrows != ncols) {
-    GSL_ERROR("[ocaml_gsl_eigen_symmv] the given matrix is not symmatrix.", GSL_EINVAL);
+    GSL_ERROR("[ocaml_gsl_eigen_symmv] the given matrix is not symmetric.", GSL_EINVAL);
   }
   gsl_matrix* matrix = gsl_matrix_alloc (nrows, ncols);
   for (size_t i = 0; i < nrows; i ++) {
@@ -351,10 +351,8 @@ CAMLprim value ocaml_gsl_eigen_symmv (value m) {
       gsl_matrix_set (matrix, i, j, Double_field (Field (m, i), j));
     }
   }
-  gsl_vector* eigen_vals = gsl_vector_alloc (nrows);
-  gsl_vector_set_all (eigen_vals, 0.0);
-  gsl_matrix* eigen_vecs = gsl_matrix_alloc (nrows, ncols);
-  gsl_matrix_set_all (eigen_vecs, 0.0);
+  gsl_vector* eigen_vals = gsl_vector_calloc (nrows);
+  gsl_matrix* eigen_vecs = gsl_matrix_calloc (nrows, ncols);
   gsl_eigen_symmv_workspace* w = gsl_eigen_symmv_alloc (nrows);
   int status = gsl_eigen_symmv (matrix, eigen_vals, eigen_vecs, w);
   if (status) {
@@ -380,6 +378,57 @@ CAMLprim value ocaml_gsl_eigen_symmv (value m) {
   gsl_matrix_free (eigen_vecs);
   gsl_eigen_symmv_free (w);
   CAMLreturn (result);
+}
+
+CAMLprim value ocaml_gsl_eigen_nonsymmv (value m) {
+  CAMLparam1 (m);
+  CAMLlocal5 (cnumber, res_evals, res_evecs, res_evec, res);
+  const size_t nrows = Wosize_val (m);
+  const size_t ncols = nrows > 0 ? Wosize_val (Field (m, 0)) : 0;
+  if (nrows != ncols) {
+    GSL_ERROR ("[ocaml_gsl_eigen_nonsymm_Z] the given matrix is not symmetric.", GSL_EINVAL);
+  }
+  gsl_matrix* matrix = gsl_matrix_alloc (nrows, ncols);
+  for (size_t i = 0; i < nrows; i ++) {
+    for (size_t j = 0; j < ncols; j ++) {
+      gsl_matrix_set (matrix, i, j, Double_field (Field (m, i), j));
+    }
+  }
+  gsl_vector_complex* eigen_vals = gsl_vector_complex_calloc (nrows);
+  gsl_matrix_complex* eigen_vecs = gsl_matrix_complex_calloc (nrows, ncols);
+  gsl_eigen_nonsymmv_workspace* w = gsl_eigen_nonsymmv_alloc (nrows);
+  int status = gsl_eigen_nonsymmv (matrix, eigen_vals, eigen_vecs, w);
+  if (status) {
+    GSL_ERROR ("[ocaml_gsl_eigen_nonsymm_Z] gsl_eigen_nonsymm_Z failed.", status);
+  }
+  res_evals = caml_alloc (nrows, 0);
+  for (size_t i = 0; i < nrows; i ++) {
+    cnumber = caml_alloc (2, Double_array_tag);
+    gsl_complex x = gsl_vector_complex_get (eigen_vals, i);
+    Store_double_field (cnumber, 0, x.dat[0]);
+    Store_double_field (cnumber, 1, x.dat[1]);
+    Store_field (res_evals, i, cnumber);
+  }
+  res_evecs = caml_alloc (ncols, 0);
+  for (size_t i = 0; i < ncols; i ++) {
+    res_evec = caml_alloc (nrows, 0);
+    for (size_t j = 0; j < nrows; j ++) {
+      cnumber = caml_alloc (2, Double_array_tag);
+      gsl_complex x = gsl_matrix_complex_get (eigen_vecs, j, i);
+      Store_double_field (cnumber, 0, x.dat[0]);
+      Store_double_field (cnumber, 1, x.dat[1]);
+      Store_field (res_evec, j, cnumber);
+    }
+    Store_field (res_evecs, i, res_evec);
+  }
+  res = caml_alloc (2, 0);
+  Store_field (res, 0, res_evals);
+  Store_field (res, 1, res_evecs);
+  gsl_matrix_free (matrix);
+  gsl_vector_complex_free (eigen_vals);
+  gsl_matrix_complex_free (eigen_vecs);
+  gsl_eigen_nonsymmv_free (w);
+  CAMLreturn (res);
 }
 
 CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {

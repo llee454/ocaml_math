@@ -5,7 +5,7 @@ open Stats
 
 type t = {
   covariance_matrix: float array array;
-  components: Eigen.t;
+  components: Eigen.Symmetric.t;
   proportion_var: float array;
 }
 [@@deriving sexp]
@@ -19,7 +19,7 @@ type t = {
 *)
 let f (xs : float array array) : t =
   let covariance_matrix = get_covariance_matrix xs in
-  let (Eigen.{ values; _ } as components) = Eigen.symm covariance_matrix in
+  let (Eigen.Symmetric.{ values; _ } as components) = Eigen.Symmetric.get_eigenvectors covariance_matrix in
   let total_var = sum values in
   let proportion_var = Array.map values ~f:Float.((fun x -> x / total_var)) in
   { covariance_matrix; components; proportion_var }
