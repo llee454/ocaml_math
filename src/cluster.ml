@@ -1,5 +1,9 @@
+(**
+  This module defines a collection of functions for clustering points. It
+  implements naive k-means and another clustering algorithm based on simulated
+  annealing.
+*)
 open Core
-
 open Stats
 open Linalg
 open Simulated_annealing
@@ -131,22 +135,6 @@ let create_random_cluster dim center radius =
 let create_random_clusters dim center radius =
   Array.init ~f:(fun _ -> create_random_cluster dim center radius)
 
-(* let%expect_test "compare_runtime" =
-  let points = Array.init 100_000 ~f:(fun _ -> create_random_vector_lt ~len:10.0 3) in
-  let clusters = Array.init 100 ~f:(fun _ -> create_random_vector_lt ~len:10.0 3) in
-  Gc.full_major ();
-  let t0 = Core.Time_ns.now () |> Core.Time_ns.to_int_ns_since_epoch in
-  let res0 = get_cluster_variances points clusters in
-  let t1 = Core.Time_ns.now () |> Core.Time_ns.to_int_ns_since_epoch in
-  Gc.full_major ();
-  (* let t2 = Core.Time_ns.now () |> Core.Time_ns.to_int_ns_since_epoch in
-  let res1 = get_cluster_variances_alt points clusters in
-  let t3 = Core.Time_ns.now () |> Core.Time_ns.to_int_ns_since_epoch in *)
-  (* printf !"res0: %{sexp: (int * float) option} t1: %d res1: %{sexp: (int * float) option} t2: %d " res0 (t1 - t0) res1 (t3 - t2); *)
-  (* printf !"t1: %d t2: %d " (t1 - t0) (t3 - t2); *)
-  printf !"t1: %d" (t1 - t0);
-  [%expect {| |}] *)
-
 module Simann = struct
   (** parameters used to tune the simulated annealing algorithm *)
   type t = {
@@ -158,6 +146,9 @@ module Simann = struct
 (**
   Accepts a set of normalized points [points] and groups them into
   [num_clusters] clusters.
+
+  Note: this function returns different clusters than k-means - it attempts
+  to minimize the mean of the cluster variances.
 *)
 let get_clusters ?(params = {num_iters = 1_000; num_tries = 10; min_temp = 1e-14}) dim (points : vector array) (num_clusters : Int.t) =
   let radius = get_diameter points /. 2.0 in
@@ -198,8 +189,6 @@ let get_clusters ?(params = {num_iters = 1_000; num_tries = 10; min_temp = 1e-14
     mu_t = exp (-. (1//params.num_iters)*.(log t_min -. log center_jump_energy));
     t_min
   } in
-  (* printf !"params %{sexp: M.params}\n" gsl_params;
-  flush stdout; *)
   M.f ~params:gsl_params ~num_iters:params.num_iters ~step_size:radius (M.create_state init_clusters)
 end
 
