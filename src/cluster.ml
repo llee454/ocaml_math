@@ -210,16 +210,15 @@ module K_means = struct
     the cluster and [point]. If the array of clusters is empty, this function
     returns None.
   *)
-  let get_closest_cluster_index_diff clusters point =
+  let get_closest_cluster_index clusters point =
     Array.foldi clusters ~init:None ~f:(fun i acc cluster ->
-      let diff = vector_sub point cluster in
-      let dist = vector_norm diff in
+      let dist = distance point cluster in
       match acc with
-      | None -> Some (i, cluster, dist, diff)
-      | Some (_, _, prev_dist, _) when Float.(dist <= prev_dist) ->
-        Some (i, cluster, dist, diff)
+      | None -> Some (i, dist)
+      | Some (_, prev_dist) when Float.(dist <= prev_dist) ->
+        Some (i, dist)
       | _ -> acc
-    ) |> Option.map ~f:(fun (i, _, _, diff) -> (i, diff)) 
+    ) |> Option.map ~f:fst
 
   (**
     Accepts two arguments [points] and [clusters] and, for each cluster,
@@ -229,8 +228,8 @@ module K_means = struct
   *)
   let get_means (points : vector array) (clusters : vector array) =
     Array.fold points ~init:(Array.create ~len:(Array.length clusters) None) ~f:(fun acc p ->
-      let (i, diff) = get_closest_cluster_index_diff clusters p |> Option.value_exn ~here:[%here] in
-      acc.(i) <- Option.value_map acc.(i) ~default:(Some (1, diff)) ~f:(fun (num_points, sum) -> Some (succ num_points, vector_add sum diff));
+      let i = get_closest_cluster_index clusters p |> Option.value_exn ~here:[%here] in
+      acc.(i) <- Option.value_map acc.(i) ~default:(Some (1, p)) ~f:(fun (num_points, sum) -> Some (succ num_points, vector_add sum p));
       acc
     ) |>
     Array.map ~f:(Option.map ~f:(fun (num_points, sum) -> vector_scalar_mult (1//num_points) sum))
@@ -264,7 +263,8 @@ module K_means = struct
     let converged = ref false in
     while not !converged do
       let next = get_next dim center radius points !init in
-      converged := [%equal: vector array] !init next
+      converged := [%equal: vector array] !init next;
+      init := next
     done;
     !init
 end
