@@ -244,8 +244,13 @@ module K_means = struct
   (**
     Accepts three arguments [dim], [points], and [num_clusters], and returns
     [num_clusters] clusters using the k-means algorithm.
+
+    WARNING: if the number of data points is less than the number of clusters,
+    this function may never converge/terminate.
   *)
   let get_clusters dim points num_clusters =
+    if Array.length points < num_clusters
+    then failwiths ~here:[%here] "Error: you must have more points than clusters to run the naive k-means algorithm." () [%sexp_of: unit];
     let radius = get_diameter points /. 2.0 in
     let center = get_mean_vector points |> Option.value_exn ~here:[%here] in
     let init = ref @@ Array.init num_clusters ~f:(fun _ -> create_random_cluster dim center radius) in
