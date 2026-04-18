@@ -156,7 +156,7 @@ let get_clusters ?(params = {num_iters = 1_000; num_tries = 10; min_temp = 1e-14
   let init_clusters = create_random_clusters dim points_mean radius num_clusters in
   let module M = Simulated_annealing (struct
     type t = vector array
-    let copy clusters = Array.copy clusters
+    let copy = Array.copy_matrix
     let energy clusters = 
       get_cluster_variances points clusters |> mean
     let step clusters dist =

@@ -11,6 +11,7 @@
 *)
 open Core
 open Linalg
+open Simulated_annealing
 
 (** Accepts an association matrix and returns the corresponding degree matrix. *)
 let get_degree_matrix amatrix =
@@ -193,3 +194,44 @@ let%expect_test "get_eigenprojection" =
   Array.sum (module Float) ps ~f:(fun p -> Float.square p.(1)) /. float num_nodes |> printf "%f\n";
   Array.sum (module Float) ps ~f:(fun p -> Float.square p.(2)) /. float num_nodes |> printf "%f\n";
   [%expect {||}]
+
+let get_eigenprojection_siman ~dim amatrix =
+  let num_nodes = Array.length amatrix in
+  let module M = Simulated_annealing (struct
+    type t = vector array
+    let copy = Array.copy_matrix
+    let energy points =
+      Basic.sumi amatrix ~f:(fun i row ->
+        Basic.sumi row ~f:(fun j weight ->
+          weight *. Float.square (distance points.(i) points.(j))
+        )
+      ) +. (1_000.0 *. Option.value_map (get_mean_vector points) ~default:0.0 ~f:vector_norm)
+      +. (1_000.0 *. Array.sum (module Float) (matrix_transpose points) ~f:(fun col -> Float.abs (1.0 -. Stats.variance col)))
+    let step points dist =
+      let deltas = create_random_vector_lt ~len:dist num_nodes in
+      Array.mapi points ~f:(fun i point ->
+        vector_add point (create_random_vector ~len:deltas.(i) dim)
+      )
+    let dist points0 points1 =
+      Array.foldi points0 ~init:0.0 ~f:(fun i acc p0 ->
+        acc +. Float.square (distance p0 points1.(i))
+      ) |> Float.sqrt
+    let print = None
+  end)
+  in
+  M.f ~num_iters:1_000 ~step_size:1.0 
+    (M.create_state (Array.init num_nodes ~f:(fun _ -> create_random_vector_lt ~len:1.0 dim)))
+   
+let%expect_test "get_eigenprojection" =
+  let amatrix = [|
+    [| 0.0;  1.0;  0.0;  0.0;  1.0;  0.0 |];
+    [| 1.0;  0.0;  1.0;  0.0;  1.0;  0.0 |];
+    [| 0.0;  1.0;  0.0;  1.0;  0.0;  0.0 |];
+    [| 0.0;  0.0;  1.0;  0.0;  1.0;  1.0 |];
+    [| 1.0;  1.0;  0.0;  1.0;  0.0;  0.0 |];
+    [| 0.0;  0.0;  0.0;  1.0;  0.0;  0.0 |]
+  |] in
+  let ps = get_eigenprojection_siman ~dim:3 amatrix in
+  printf !"%{sexp: Linalg.vector array}\n" ps;
+  [%expect {||}]
+

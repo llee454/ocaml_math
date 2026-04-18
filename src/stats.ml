@@ -22,6 +22,13 @@ external sample_variance : float array -> float = "ocaml_gsl_stats_variance"
    printf "%.4f" (mean [| 0.3786; -1.204; 1.9441; -1.151; -1.184 |]);
    [%expect {|1.9508|}] *)
 
+let variance xs =
+  let n = Array.length xs in
+  let mu = mean xs in
+  let sum = Basic.sum xs ~f:(fun x -> Float.square (x -. mu)) in
+  sum /. float n
+
+
 external pdf_normal : mean:float -> std:float -> float -> float = "ocaml_gsl_ran_gaussian_pdf"
 
 external cdf_gaussian_p : x:float -> std:float -> float = "ocaml_gsl_cdf_gaussian_P"
