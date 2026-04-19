@@ -5,20 +5,6 @@
 #include <caml/memory.h> // CAMLreturn
 #include <caml/alloc.h> // caml_copy
 
-typedef double (*c_real_fn) (double);
-
-/*
-  Accepts a real function pointer and returns an OCaml value that represents
-  the given function.
-*/
-CAMLprim value c_real_fn_to_ocaml (c_real_fn fn) {
-  CAMLparam0 ();
-  CAMLlocal1 (res);
-  res = caml_alloc (1, Abstract_tag);
-  Store_field (res, 0, (value) fn);
-  CAMLreturn (res);
-}
-
 /*
   Accepts a Scheme function and returns an OCaml value that represents the
   given function.
@@ -32,36 +18,60 @@ CAMLprim value scm_real_fn_to_ocaml (SCM sfn) {
 }
 
 /*
-  An OCaml function that accepts C real function pointer and returns an
-  OCaml function that will apply the referenced function.
-*/
-CAMLprim value call_ocaml_c_real_fn (value cfn, value x) {
-  CAMLparam2 (cfn, x); 
-  c_real_fn fn = (c_real_fn) Field (cfn, 0);
-  CAMLreturn (caml_copy_double ((*fn) (Double_val (x))));
-}
-
-/*
   An OCaml function that accepts a scheme function and returns an OCaml
   function that will apply the referenced function.
 */
-CAMLprim value call_scm_real_fn (value fn, value x) {
+CAMLprim value apply_scm_real_fn (value fn, value x) {
   CAMLparam2 (fn, x);
   SCM sfn = (SCM) Field (fn, 0);
   CAMLreturn (caml_copy_double (scm_to_double (scm_call_1 (sfn, scm_from_double (Double_val (x))))));
 }
 
-/* A C wrapper function for the integration test function. */
-SCM c_fn_int_test (c_real_fn f) {
-  return scm_from_double (Double_val (caml_callback (*caml_named_value ("int_test"), c_real_fn_to_ocaml (f))));
+/*
+  Accepts an OCaml Integrate.t record and returns a Scheme list that
+  represents it.
+*/
+SCM integrate_t_to_scm (value x) {
+   return scm_cons (
+     scm_from_double (Double_val (Field (x, 0))),
+     scm_cons (
+       scm_from_double (Double_val (Field (x, 1))),
+       scm_cons (
+         scm_from_int (Int_val (Field (x, 2))),
+         SCM_EOL)));
+}
+
+/*
+  Accepts a Scheme list that represents an OCaml Integrate.t record and
+  returns the corresponding OCaml record.
+*/
+value integrate_qag_params_t_from_scm (SCM x) {
+  CAMLparam0 ();
+  CAMLlocal1 (result);
+  result = caml_alloc (3, 0);
+  Store_field (result, 0, caml_copy_double (scm_to_double (scm_list_ref (x, scm_from_int (0))))); // epsabs
+  Store_field (result, 1, caml_copy_double (scm_to_double (scm_list_ref (x, scm_from_int (1))))); // epsrel
+  Store_field (result, 2, Val_int          (scm_to_int    (scm_list_ref (x, scm_from_int (2))))); // limit
+  CAMLreturn (result);
 }
 
 /*
   A Scheme function that accepts a scheme function and integrates the given
-  function over the interval [0, 1].
+  function over the given interval.
 */
-SCM scm_fn_int_test (SCM f) {
-  return scm_from_double (Double_val (caml_callback (*caml_named_value ("int_test"), scm_real_fn_to_ocaml (f))));
+SCM integrate_qag (SCM params, SCM f, SCM lower, SCM upper) {
+  const size_t num_args = 5;
+  value args[] = {
+    integrate_qag_params_t_from_scm (params),
+    scm_real_fn_to_ocaml (f),
+    caml_copy_double (scm_to_double (lower)),
+    caml_copy_double (scm_to_double (upper)),
+    Val_int(0)
+  };
+  return integrate_t_to_scm (
+    caml_callbackN (
+      *caml_named_value ("integrate_qag"), num_args, args
+  ));
 }
 
 /*
@@ -86,5 +96,5 @@ char** get_argv () {
 */
 void init () {
   caml_startup (get_argv ());
-  scm_c_define_gsubr ("scm-fn-int-test", 1, 0, 0, scm_fn_int_test);
+  scm_c_define_gsubr ("dahlia-qag", 4, 0, 0, integrate_qag);
 }

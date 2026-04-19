@@ -40,6 +40,34 @@ Using the Extension
 To use this extension, you can load the shared object using the
 `load-extension` function in Guile Scheme. For example:
 
-```scheme
-(load-extension "./guile/guile_dahlia.so" "init")
+```bash
+$ guile
+> (load "./guile/dahlia_integration.scm")
+> (use-modules (dahlia integration))
 ```
+
+You may now call functions defined in this module, for example:
+
+```scheme
+(t-out (qag (make-qag-params-t 1E-6 1E-6 1000) (lambda (x) (+ (* x x) 2)) 1 2))
+```
+
+Overview and Structure
+----------------------
+
+The Guile Dahlia is a Guile package. Guile packages consist of Scheme files
+and extensions. When installed the Scheme files should be copied to Guile's
+site directory (/usr/share/guile/site/3.0) and the extensions should be
+installed in the extensions directory. The
+
+The Guile Dahlia extension is a shared object file named
+guile/guile_dahlia.so. It defines a set of Scheme procedures that represent
+the functions provided by the Dahlia OCaml library. These procedures are
+raw exports and are not organized into Scheme libraries/modules nor use
+record types.
+
+The package includes Scheme libraries that package these raw functions into
+libraries/modules and define wrappers that use record types. These libraries
+load the Guile Dahlia extension.
+
+Users should interact with the package through these Scheme libraries.

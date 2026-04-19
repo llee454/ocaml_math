@@ -2,3 +2,4 @@ _build
 _opam
 .vscode
 .DS_Store
+guile/guile_dahlia.so
