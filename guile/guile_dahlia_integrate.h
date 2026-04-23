@@ -1,9 +1,14 @@
-#include <libguile.h>
 #include <math.h>
+
+#include <gsl_errno.h>
+#include <gsl_integration.h>
+
 #include <caml/callback.h>
 #include <caml/mlvalues.h>
 #include <caml/memory.h> // CAMLreturn
 #include <caml/alloc.h> // caml_copy
+
+#include <libguile.h>
 
 /*
   Accepts a Scheme function and returns an OCaml value that represents the
@@ -27,27 +32,26 @@ CAMLprim value apply_scm_real_fn (value fn, value x) {
   CAMLreturn (caml_copy_double (scm_to_double (scm_call_1 (sfn, scm_from_double (Double_val (x))))));
 }
 
+SCM create_integrate_t (double out, double err, size_t neval) {
+  return scm_cons (
+    scm_from_double (out),
+    scm_cons (
+      scm_from_double (err),
+      scm_cons (
+        scm_from_int (neval),
+        SCM_EOL)));
+}
+
 /*
   Accepts an OCaml Integrate.t record and returns a Scheme list that
   represents it.
 */
 SCM integrate_t_to_scm (value x) {
-   return scm_cons (
-     scm_from_double (Double_val (Field (x, 0))),
-     scm_cons (
-       scm_from_double (Double_val (Field (x, 1))),
-       scm_cons (
-         scm_from_int (Int_val (Field (x, 2))),
-         SCM_EOL)));
-}
-
-value integrate_qng_params_t_from_scm (SCM x) {
-  CAMLparam0 ();
-  CAMLlocal1 (result);
-  result = caml_alloc (2, Double_array_tag);
-  Store_double_array_field (result, 0, caml_copy_double (scm_to_double (scm_list_ref (x, scm_from_int (0))))); // epsabs
-  Store_double_array_field (result, 1, caml_copy_double (scm_to_double (scm_list_ref (x, scm_from_int (1))))); // epsrel
-  CAMLreturn (result);
+  return create_integrate_t (
+    Double_val (Field (x, 0)),
+    Double_val (Field (x, 1)),
+    Int_val (Field (x, 2))
+  );
 }
 
 /*
@@ -64,19 +68,36 @@ value integrate_qag_params_t_from_scm (SCM x) {
   CAMLreturn (result);
 }
 
+double integrate_qng_fn (double x, void* fp) {
+  return (**(double (*) (double)) fp) (x);
+}
+
 SCM integrate_qng (SCM params, SCM f, SCM lower, SCM upper) {
-  const size_t num_args = 5;
-  value args[] = {
-    integrate_qng_params_t_from_scm (params),
-    scm_real_fn_to_ocaml (f),
-    caml_copy_double (scm_to_double (lower)),
-    caml_copy_double (scm_to_double (upper)),
-    Val_int(0)
+  double out, err;
+  size_t neval;
+
+  SCM double_t = scm_c_public_ref ("system foreign", "double");  
+
+  gsl_function F = {
+    .function = &integrate_qng_fn,
+    .params = scm_to_pointer (
+      scm_procedure_to_pointer (double_t, f, scm_list_1 (double_t)))
   };
-  return integrate_t_to_scm (
-    caml_callbackN (
-      *caml_named_value ("integrate_qng"), num_args, args
-  ));
+  int status = gsl_integration_qng (&F,
+    scm_to_double (lower),
+    scm_to_double (upper),
+    scm_to_double (scm_list_ref (params, scm_from_int (0))),
+    scm_to_double (scm_list_ref (params, scm_from_int (1))),
+    &out, &err, &neval
+  );
+  if (status)
+    scm_misc_error (
+      "integrate_qng",
+      "gsl_integration_qng failed.",
+      SCM_EOL
+    );
+
+  return create_integrate_t (out, err, neval);
 }
 
 /*

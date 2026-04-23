@@ -51,6 +51,17 @@
     (qag-params-t-epsrel x)
     (qag-params-t-limit x)))
 
+; Accepts four arguments:
+; * params, a qng-params-t record that specifies the error bounds
+; * f, a function that accepts a real number and returns a real number
+; * lower, a real number
+; * upper, a real number
+; integrates f over the interval lower to upper and returns a t record
+; type.
+;
+; This function uses the Quadrature Non-adaptive Gauss (QAG) algorithm
+; provided by the GNU Scientific Library (GSL) (and ultimately from the famed
+; QUADPACK library).
 (define (qng params f lower upper)
   (list->t
     (dahlia-qng
