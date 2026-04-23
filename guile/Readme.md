@@ -41,15 +41,30 @@ To use this extension, you can load the shared object using the
 `load-extension` function in Guile Scheme. For example:
 
 ```bash
-$ guile
-> (load "./guile/dahlia_integration.scm")
-> (use-modules (dahlia integration))
+$ GUILE_EXTENSIONS_PATH='/usr/lib/x86_64-linux-gnu:guile' GUILE_LOAD_PATH='./guile' rlwrap guile
+> (use-modules ((dahlia integrate) #:prefix int:))
+```
+
+alternately you can use the R6RS import syntax
+
+```scheme
+(import (prefix (dahlia integrate) int:))
 ```
 
 You may now call functions defined in this module, for example:
 
 ```scheme
-(t-out (qag (make-qag-params-t 1E-6 1E-6 1000) (lambda (x) (+ (* x x) 2)) 1 2))
+(int:t-out
+  (int:qag
+    (int:make-qag-params-t 1E-6 1E-6 1000)
+    (lambda (x) (+ (* x x) 2))
+    1 2))
+```
+
+You can also pass a load path to Guile in Guile:
+
+```
+> (add-to-load-path "./guile")
 ```
 
 Overview and Structure

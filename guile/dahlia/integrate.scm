@@ -4,27 +4,26 @@
 ;
 ; Usage
 ;
-; (load "./dahlia_integration.scm")
-; (use-modules (dahlia integration))
+; $ GUILE_EXTENSIONS_PATH='guile' GUILE_LOAD_PATH='./guile' rlwrap guile
+; (use-modules (dahlia integrate))
 
-(define-module (dahlia integration)
+(define-module (dahlia integrate)
   #:version (1 0 0)
+  #:use-module ((rnrs) #:version (6))
   #:export (
     make-t t-out t-err t-neval
+    make-qng-params-t
+    qng-params-t-epsabs 
+    qng-params-t-epsrel
     make-qag-params-t
     qag-params-t-epsabs 
     qag-params-t-epsrel
     qag-params-t-limit 
+    qng
     qag
   ))
 
-(import (rnrs (6)))
-
-(load-extension
-  (string-append
-    (dirname (current-filename))
-    "/guile_dahlia.so")
-  "init")
+(load-extension "guile_dahlia.so" "init")
 
 (define-record-type t
   (fields out err neval))
@@ -35,6 +34,14 @@
     (list-ref x 1)
     (list-ref x 2)))
 
+(define-record-type qng-params-t
+  (fields epsabs epsrel))
+
+(define (qng-params-t->list x)
+  (list
+    (qng-params-t-epsabs x)
+    (qng-params-t-epsrel x)))
+
 (define-record-type qag-params-t
   (fields epsabs epsrel limit))
 
@@ -43,6 +50,12 @@
     (qag-params-t-epsabs x)
     (qag-params-t-epsrel x)
     (qag-params-t-limit x)))
+
+(define (qng params f lower upper)
+  (list->t
+    (dahlia-qng
+      (qng-params-t->list params)
+      f lower upper)))
 
 ; Accepts four arguments:
 ; * params, a qag-params-t record that specifies the error bounds and iteration limits
