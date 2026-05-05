@@ -17,6 +17,13 @@ type t = {
 
 external ocaml_solve_bisection : Params.t -> (float -> float) -> t = "ocaml_solve_bisection"
 
+(**
+  Accepts two arguments:
+  * params, the search parameters
+  * f, a function
+  and returns an estimate of the root/zero of the function [f] between
+  [params.lower] and [params.upper].
+*)
 let solve_bisection ~params ~f () = ocaml_solve_bisection params f
 
 let%expect_test "solve_bisection" =
