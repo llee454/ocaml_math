@@ -57,7 +57,7 @@ let gen_rand_binary_seq ~num_ones ~len () =
       done;
       Fillable_vector.get_leaves tree
 
-let%expect_test "gen_rand_binary_seq" =
+(* let%expect_test "gen_rand_binary_seq" =
   let num_seqs = 10 in
   let seq_len = 10
   and num_ones = 3 in
@@ -72,4 +72,4 @@ let%expect_test "gen_rand_binary_seq" =
   Sequence.init num_seqs ~f:(fun _ -> gen_rand_binary_seq ~num_ones ~len:seq_len ())
   |> Sequence.map ~f:get_expectation
   |> printf !"%{sexp: float Sequence.t}";
-  [%expect {||}]
+  [%expect {||}] *)

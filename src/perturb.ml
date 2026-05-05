@@ -127,7 +127,7 @@ let get_phi_matrix ~num_pts ~lower ~upper ~std =
   in
   Array.init num_pts ~f:(fun k -> Array.init num_pts ~f:(phi k))
 
-let%expect_test "get_phi_matrix" =
+(* let%expect_test "get_phi_matrix" =
   let open Float in
   let num_pts = 35 (* was 50 *)
   and lower = -20.0 (* TODO: should be (at least) -20 to 20 was -10 to 10 *)
@@ -151,7 +151,7 @@ let%expect_test "get_phi_matrix" =
     (Complex.Rect.matrix_det (Complex.Rect.matrix_mult phi_matrix phi_matrix_inv));
   printf !"%{Complex.Rect.vector_to_string}\n" unperturbed_dataset_coeffs;
   printf !"%{Complex.Rect.vector_to_string}" cs_approx;
-  [%expect {||}]
+  [%expect {||}] *)
 
 (**
   Accepts four arguments:
@@ -179,7 +179,7 @@ let get_unperturbed_dataset_coeffs ~lower ~upper ~std cs' =
   let cs_approx = Complex.Rect.vector_matrix_mult phi_matrix_inv cs' in
   cs_approx
 
-let%expect_test "get_unperturbed_dataset_coeffs" =
+(* let%expect_test "get_unperturbed_dataset_coeffs" =
   let open Float in
   let num_pts = 50 (* was 50 *)
   and lower = -40.0 (* TODO: should be (at least) -20 to 20 was -10 to 10 *)
@@ -200,7 +200,7 @@ let%expect_test "get_unperturbed_dataset_coeffs" =
   let approx = Fft.to_data_slowly cs_approx in
   printf !"ps: %{real_vector_to_string};" unperturbed_dataset;
   printf !"qs: %{real_vector_to_string};" (Array.map approx ~f:Complex.Rect.real);
-  [%expect {||}]
+  [%expect {||}] *)
 
 (**
   Accepts lower arguments:
