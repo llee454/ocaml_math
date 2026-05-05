@@ -23,6 +23,7 @@
 #include <gsl_poly.h>
 
 #include <ocaml_siman.h>
+#include <ocaml_solve.h>
 #include <ocaml_nonlinear_fit.h>
 #include <ocaml_deriv.h>
 #include <ocaml_fft.h>

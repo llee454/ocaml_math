@@ -38,6 +38,8 @@ module Route = Route
 
 module Simulated_annealing = Simulated_annealing
 
+module Solve = Solve
+
 module Stats_test = Stats_test
 
 module Stats = Stats

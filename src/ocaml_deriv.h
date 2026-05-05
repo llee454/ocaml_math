@@ -19,7 +19,7 @@ value ocaml_deriv_central (value f, value x, value h) {
   *fp = f;
 
   gsl_function* F = malloc (sizeof (gsl_function));
-  F->function = (double (*)(double, void *)) &ocaml_deriv_central_f;
+  F->function = (double (*)(double, void*)) &ocaml_deriv_central_f;
   F->params   = (void*) fp;
   caml_register_global_root (F->params);
 
