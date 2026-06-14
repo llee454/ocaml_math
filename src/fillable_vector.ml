@@ -205,3 +205,20 @@ let%expect_test "create" =
       ((Node (num 2) (num_available 1) (left (Leaf (value 3) (full false)))
         (right_opt ((Leaf (value 8) (full true))))))))
     |}]
+
+(** Accepts a fillable vector and returns the value ith unfilled slot. *)
+let rec get_nth_unfilled i = function
+| Tree.Node info ->
+  let num_left = get_num_available info.left in
+  if i < num_left
+  then get_nth_unfilled i info.left
+  else Option.bind info.right_opt ~f:(get_nth_unfilled (i - num_left))
+| Tree.Leaf info -> Option.some_if (i = 0) info.value
+
+let%expect_test "get_nth_unfilled" =
+  let tree = create 5 ~f:(fun i -> i) |> Option.value_exn in
+  update 0 tree ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
+  update 4 tree ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
+  update 1 tree ~unfilled_only:true ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
+  printf !"%{sexp: int option list}" [get_nth_unfilled 0 tree; get_nth_unfilled 1 tree; get_nth_unfilled 2 tree; get_nth_unfilled 3 tree ];
+  [%expect {| ((1) (3) (8) ()) |}]
