@@ -43,7 +43,17 @@ module Tree = struct
     right_opt: 'a t option }
   | Leaf of { mutable value: 'a; mutable full: bool }
   [@@deriving sexp]
-end  
+
+  let rec copy ~f = function
+  | Node info ->
+    Node {
+      num = info.num;
+      num_available = info.num_available;
+      left = copy ~f info.left;
+      right_opt = Option.map ~f:(copy ~f) info.right_opt
+    }
+  | Leaf info -> Leaf { value = f info.value; full = info.full }
+end
 
 (**
   Accepts a fillable tree and returns a sequence of the leaf values in
