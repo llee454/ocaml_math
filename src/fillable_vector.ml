@@ -106,7 +106,9 @@ and create_aux ~f ~is_full start num =
       then None
       else Some (create_aux ~f ~is_full (start + num_left) num_right)
     in
-    Tree.Node { num; num_available = num; left; right_opt }
+    let num_available = get_num_available left +
+      Option.value_map right_opt ~default:0 ~f:get_num_available in
+    Tree.Node { num; num_available; left; right_opt }
   end
 
 let%expect_test "create" =
