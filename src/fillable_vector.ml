@@ -86,29 +86,31 @@ let get_num = function
   returns the slot's data; and [num]; and creates a fillable vector tree
   that has [num] slots where every slot is filled using [f].
 *)
-let rec create ~f num =
+let rec create ~f ~is_full num =
   if num = 0
   then None
-  else Some (create_aux ~f 0 num)
+  else Some (create_aux ~f ~is_full 0 num)
 
-and create_aux ~f start num =
+and create_aux ~f ~is_full start num =
   let depth = float num |> Float.log2 |> Float.iround_up_exn in
   if depth = 0
-  then Tree.Leaf { value = f start; full = false }
+  then 
+    let value = f start in
+    Tree.Leaf { value; full = is_full start value }
   else begin
     let num_right = num / 2 in
     let num_left  = num - num_right in
-    let left = create_aux ~f start num_left
+    let left = create_aux ~f ~is_full start num_left
     and right_opt =
       if num_right = 0
       then None
-      else Some (create_aux ~f (start + num_left) num_right)
+      else Some (create_aux ~f ~is_full (start + num_left) num_right)
     in
     Tree.Node { num; num_available = num; left; right_opt }
   end
 
 let%expect_test "create" =
-  create 5 ~f:(fun i -> i) |> printf !"%{sexp: int Tree.t option}"; 
+  create 5 ~f:(fun i -> i) ~is_full:(fun _i _x -> false) |> printf !"%{sexp: int Tree.t option}"; 
   [%expect {|
     ((Node (num 5) (num_available 5)
       (left
@@ -188,7 +190,7 @@ and update_aux ?(unfilled_only = false) ~f ~is_full i = function
     filled_slot
 
 let%expect_test "create" =
-  let tree = create 5 ~f:(fun i -> i) |> Option.value_exn in
+  let tree = create 5 ~f:(fun i -> i) ~is_full:(fun _i _x -> false) |> Option.value_exn in
   update 0 tree ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
   update 4 tree ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
   update 1 tree ~unfilled_only:true ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
@@ -216,7 +218,7 @@ let rec get_nth_unfilled i = function
 | Tree.Leaf info -> Option.some_if (i = 0) info.value
 
 let%expect_test "get_nth_unfilled" =
-  let tree = create 5 ~f:(fun i -> i) |> Option.value_exn in
+  let tree = create 5 ~f:(fun i -> i) ~is_full:(fun _i _x -> false) |> Option.value_exn in
   update 0 tree ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
   update 4 tree ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
   update 1 tree ~unfilled_only:true ~f:(fun x -> 2*x) ~is_full:(Fn.const true);

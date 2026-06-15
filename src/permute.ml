@@ -18,7 +18,7 @@ let f xs =
   then Sequence.empty
   else
     let len = Sequence.length xs in
-    let tree = Fillable_vector.create ~f:(Fn.const None) len |> Option.value_exn in
+    let tree = Fillable_vector.create ~f:(Fn.const None) ~is_full:(fun _i _x -> false) len |> Option.value_exn in
     Sequence.iteri xs ~f:(fun i x ->
       let j = Random.int (len - i) in
       Fillable_vector.update j tree ~unfilled_only:true ~f:(Fn.const (Some x))
@@ -50,7 +50,7 @@ let gen_rand_binary_seq ~num_ones ~len () =
     if len < num_ones
     then failwiths ~here:[%here] "Error: an error occured while trying to generate a binary sequence with a given number of ones. The number of ones requested was longer than the sequence." (num_ones, len) [%sexp_of: (int * int)]
     else
-      let tree = Fillable_vector.create ~f:(Fn.const 0) len |> Option.value_exn in
+      let tree = Fillable_vector.create ~f:(Fn.const 0) ~is_full:(fun _i _x -> false) len |> Option.value_exn in
       for i = 0 to num_ones - 1 do
         let j = Random.int (len - i) in
         Fillable_vector.update j tree ~unfilled_only:true ~f:(Fn.const 1) ~is_full:(Fn.const true)
