@@ -27,6 +27,15 @@ let%expect_test "to_list/of_list" =
   printf !"%{sexp: int list}" (to_list (of_list [1; 2; 3]));
   [%expect {| (1 2 3) |}]
 
+(**
+  Creates a lazy list whose values have been eagerly evaluated.
+  
+  Warning: OCaml, eagerly evaluates the arguments passed to a function. If
+  you pass values to this function, generally, they will be eagerly evaluated.
+
+  If you do not want to eagerly evaluate the arguments, construct your list
+  using the Cons constructor.
+*)
 let cons x xs = lazy (Cons (x, xs))
 
 let cdr = function
@@ -41,6 +50,13 @@ let rec take n : 'a t -> 'a t = function
   if Int.(n <= 0)
   then lazy (Nil)
   else lazy (Cons (x, take Int.(n - 1) xs))
+
+let rec nth n : 'a t -> 'a option = function
+| lazy (Nil) -> None
+| lazy (Cons (x, xs)) ->
+  if Int.(n <= 0)
+  then Some x
+  else nth Int.(n - 1) xs
 
 let rec iterate ~f init : 'a t = lazy (Cons (init, iterate ~f (f init)))
 
