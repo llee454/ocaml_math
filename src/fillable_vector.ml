@@ -217,7 +217,7 @@ let rec get_nth_unfilled i = function
   if i < num_left
   then get_nth_unfilled i info.left
   else Option.bind info.right_opt ~f:(get_nth_unfilled (i - num_left))
-| Tree.Leaf info -> Option.some_if (i = 0) info.value
+| Tree.Leaf info -> Option.some_if (i = 0 && not info.full) info.value
 
 let%expect_test "get_nth_unfilled" =
   let tree = create 5 ~f:(fun i -> i) ~is_full:(fun _i _x -> false) |> Option.value_exn in
@@ -225,4 +225,35 @@ let%expect_test "get_nth_unfilled" =
   update 4 tree ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
   update 1 tree ~unfilled_only:true ~f:(fun x -> 2*x) ~is_full:(Fn.const true);
   printf !"%{sexp: int option list}" [get_nth_unfilled 0 tree; get_nth_unfilled 1 tree; get_nth_unfilled 2 tree; get_nth_unfilled 3 tree ];
-  [%expect {| ((1) (3) (8) ()) |}]
+  [%expect {| ((1) (3) () ()) |}]
+
+let rec get_nth i = function
+| Tree.Node info ->
+  let num_left = get_num info.left in
+  if i < num_left
+  then get_nth i info.left
+  else Option.bind info.right_opt ~f:(get_nth (i - num_left))
+| Tree.Leaf info -> Option.some_if (i = 0) info.value
+
+let rec get_nth_unfilled_index_aux index i = function
+| Tree.Node info ->
+  let num_avail_left = get_num_available info.left
+  and num_left = get_num info.left in
+  if i < num_avail_left
+  then get_nth_unfilled_index_aux index i info.left
+  else Option.bind info.right_opt ~f:(get_nth_unfilled_index_aux (index + num_left) (i - num_avail_left))
+| Tree.Leaf info -> Option.some_if (i = 0 && not info.full) index
+
+let get_nth_unfilled_index (i : int) (tree : 'a Tree.t) : int option = get_nth_unfilled_index_aux 0 i tree
+
+let%expect_test "get_nth_unfilled_index" =
+  let tree = create 5 ~f:Fn.id ~is_full:(fun _i _x -> false) |> Option.value_exn in
+  update 0 tree ~f:Fn.id ~is_full:(Fn.const true);
+  update 1 tree ~f:Fn.id ~is_full:(Fn.const true);
+  update 4 tree ~f:Fn.id ~is_full:(Fn.const true);
+  printf !"%{sexp: int option list}" [
+    get_nth_unfilled_index 0 tree;
+    get_nth_unfilled_index 1 tree;
+    get_nth_unfilled_index 2 tree;
+    get_nth_unfilled_index 3 tree ];
+  [%expect {| ((2) (3) () ()) |}]
