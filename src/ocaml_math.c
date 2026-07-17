@@ -446,7 +446,7 @@ CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {
   caml_enter_blocking_section ();
   const size_t xstride = 1;
   const size_t ystride = 1;
-  const size_t n = 3;
+  const size_t n = Wosize_val (xs);
   double c0;
   double c1;
   double cov00;
