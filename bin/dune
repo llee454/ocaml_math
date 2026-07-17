@@ -5,6 +5,7 @@
     eio_main
     ocaml_math
     plplot
+    core_bench
   )
   (link_flags -cclib -lgsl -cclib -lgslcblas)
   (preprocess (pps ppx_jane))

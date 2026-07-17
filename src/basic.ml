@@ -52,23 +52,33 @@ let%expect_test "fact_3" =
   [%expect {|120.0|}]
 
 let binom_coeff ~n ~k () =
-  let res = ref 1 in
+  let open Bigint in
+  let res = ref (Bigint.of_int 1) in
   for i = 1 to k do
-    res := (!res * (n + 1 - i))/i
+    res := (!res * (Bigint.of_int n + Bigint.of_int 1 - Bigint.of_int i)) / Bigint.of_int i
   done;
   !res
 
 let%expect_test "binom_coeff" =
   binom_coeff ~n:0 ~k:0 ()
-  |> printf "%d";
+  |> Bigint.to_string
+  |> printf "%s" ;
   [%expect {| 1 |}]
 
 let%expect_test "binom_coeff" =
   binom_coeff ~n:8 ~k:2 ()
-  |> printf "%d";
+  |> Bigint.to_string
+  |> printf "%s" ;
   [%expect {| 28 |}]
 
 let%expect_test "binom_coeff" =
   binom_coeff ~n:15 ~k:7 ()
-  |> printf "%d";
+  |> Bigint.to_string
+  |> printf "%s" ;
   [%expect {| 6435 |}]
+
+let%expect_test "binom_coeff" =
+  binom_coeff ~n:1_000 ~k:10 ()
+  |> Bigint.to_string
+  |> printf "%s" ;
+  [%expect {| 263409560461970212832400 |}]

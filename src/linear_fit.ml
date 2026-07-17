@@ -3,7 +3,7 @@ open Core
 type t = {
   c0: float;
   c1: float;
-}
+} [@@deriving sexp]
 
 external ocaml_gsl_fit_linear : float array -> float array -> t = "ocaml_gsl_fit_linear"
 

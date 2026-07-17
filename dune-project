@@ -4,7 +4,7 @@
 (authors "Larry D. Lee Jr. <llee454@gmail.com>")
 (maintainers "Larry D. Lee Jr. <llee454@gmail.com>")
 (source (github llee454/ocaml_math))
-(version 2.7.1)
+(version 2.8.0)
 (generate_opam_files)
 (package
  (name ocaml_math)
@@ -21,6 +21,8 @@
   eio_main
   conf-gsl
   plplot
+  core_bench
+  bignum
  )
 )
 (use_standard_c_and_cxx_flags false)

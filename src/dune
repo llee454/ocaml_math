@@ -1,7 +1,7 @@
 (library
   (name ocaml_math)
   (public_name ocaml_math)
-  (libraries core)
+  (libraries core bignum)
   (inline_tests)
   (preprocess (pps ppx_jane))
   (foreign_stubs (language c) (names ocaml_math)
