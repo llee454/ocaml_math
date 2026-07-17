@@ -435,18 +435,20 @@ CAMLprim value ocaml_gsl_eigen_nonsymmv (value m) {
 CAMLprim value ocaml_gsl_fit_linear (value xs, value ys) {
   CAMLparam2 (xs, ys);
   CAMLlocal1 (result);
-  double* x = malloc (Wosize_val (xs) * sizeof (double));
-  for (size_t i = 0; i < Wosize_val (xs); i ++) {
+  size_t n_xs = Wosize_val (xs);
+  double* x = malloc (n_xs * sizeof (double));
+  for (size_t i = 0; i < n_xs; i ++) {
     x [i] = Double_field (xs, i);
   }
-  double* y = malloc (Wosize_val (ys) * sizeof (double));
-  for (size_t i = 0; i < Wosize_val (ys); i ++) {
+  size_t n_ys = Wosize_val (ys);
+  double* y = malloc (n_ys * sizeof (double));
+  for (size_t i = 0; i < n_ys; i ++) {
     y [i] = Double_field (ys, i);
   }
   caml_enter_blocking_section ();
   const size_t xstride = 1;
   const size_t ystride = 1;
-  const size_t n = Wosize_val (xs);
+  const size_t n = n_xs < n_ys ? n_xs : n_ys;
   double c0;
   double c1;
   double cov00;
