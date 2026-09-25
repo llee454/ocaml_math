@@ -34,6 +34,8 @@ module Perturb = Perturb
 
 module Polynomial = Polynomial
 
+module Rand_seq = Rand_seq
+
 module Route = Route
 
 module Simulated_annealing = Simulated_annealing
