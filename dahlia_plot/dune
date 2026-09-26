@@ -1,0 +1,6 @@
+(library
+  (name dahlia_plot)
+  (libraries core plplot)
+  (inline_tests)
+  (preprocess (pps ppx_jane))
+)

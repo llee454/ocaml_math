@@ -4,6 +4,7 @@
     core
     eio_main
     ocaml_math
+    dahlia_plot
     plplot
     core_bench
   )

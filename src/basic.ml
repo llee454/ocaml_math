@@ -8,6 +8,13 @@ let%expect_test "sum" =
   printf "%.1f" (sum ~f:Fn.id [| 1.0; 3.5; -2.5; 8.2 |]);
   [%expect {|10.2|}]
 
+let isum ~init ~max ~f () =
+  let acc = ref 0.0 in
+  for i = init to max do
+    acc := !acc +. f i
+  done;
+  !acc
+
 let lsum = List.fold ~init:0.0 ~f:(fun acc x -> acc +. x)
 
 let%expect_test "lsum" =
@@ -50,6 +57,29 @@ let%expect_test "fact_2" =
 let%expect_test "fact_3" =
   printf "%.1f" (fact 5);
   [%expect {|120.0|}]
+
+(**
+  Accepts two arguments: [upper] and [lower], and returns [upper!/lower!].
+
+  Warning: this function is undefined if [lower > upper] or if [lower < 0].
+*)
+let fact_down_to ~upper ~lower () =
+  let open Bigint in
+  let res = ref (Bigint.of_int 1) in
+  for i = upper downto Int.(lower + 1) do
+    if Int.(i > 0) then res := (!res * Bigint.of_int i)
+  done;
+  !res
+
+let%expect_test "fact_down_to" =
+  [
+    (5, 0);
+    (5, 2);
+    (5, 3)
+  ]
+  |> List.map ~f:(fun (upper, lower) -> fact_down_to ~upper ~lower ())
+  |> printf !"%{sexp: Bigint.t list}";
+  [%expect {| (120 60 20) |}]
 
 let binom_coeff ~n ~k () =
   let open Bigint in
