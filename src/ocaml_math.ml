@@ -1,5 +1,7 @@
 include Basic
 
+module Bernoulli = Bernoulli
+
 module Cluster = Cluster
 
 module Complex = Complex
