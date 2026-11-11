@@ -9,8 +9,10 @@ let bernoulli n =
     Int.(1//(1 + k)) *
     isum () ~init:0 ~max:k ~f:(fun j ->
       (if Int.(j mod 2 = 0) then 1.0 else -1.0)*
-      (float @@ Int.(pow (1 + j) n))*
-      (Bigint.to_float @@ binom_coeff () ~n:k ~k:j)
+      Bigint.(to_float @@
+        (pow (of_int Int.(1 + j)) (of_int n)) *
+        (binom_coeff () ~n:k ~k:j)
+      )
     )
   )
 
